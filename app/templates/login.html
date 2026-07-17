@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Login - FastAPI Fullstack{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center mt-5">
+    <div class="col-md-6 col-lg-5">
+        <div class="card shadow-lg border-0 rounded-4">
+            <div class="card-body p-4 p-md-5">
+                <div class="text-center mb-4">
+                    <h2 class="fw-bold">Welcome Back</h2>
+                    <p class="text-muted">Please enter your credentials to access your dashboard.</p>
+                </div>
+                
+                <!-- Server-Side Error Alert Block -->
+                {% if error %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <strong>Error:</strong> {{ error }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endif %}
+
+                <!-- Normal HTML Login Form -->
+                <form action="/login" method="post">
+                    <!-- CSRF placeholder for future-proofing -->
+                    <!-- <input type="hidden" name="csrf_token" value="{{ csrf_token }}"> -->
+                    
+                    <div class="mb-3">
+                        <label for="email" class="form-label fw-semibold">Email address</label>
+                        <input type="email" class="form-control form-control-lg bg-light" id="email" name="email" 
+                               required autofocus placeholder="name@example.com" 
+                               value="{{ email | default('') }}">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="password" class="form-label fw-semibold">Password</label>
+                        <input type="password" class="form-control form-control-lg bg-light" id="password" name="password" 
+                               required placeholder="••••••••">
+                    </div>
+                    
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn btn-dark btn-lg" 
+                                onclick="this.innerHTML='<span class=\'spinner-border spinner-border-sm\' role=\'status\' aria-hidden=\'true\'></span> Authenticating...'; this.form.submit(); this.disabled=true;">
+                            Login
+                        </button>
+                    </div>
+                </form>
+                
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

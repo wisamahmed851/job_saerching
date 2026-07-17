@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
+    PROJECT_NAME: str = "Job Searching API"
     DATABASE_URL: str
     SECRET_KEY: str
     ALGORITHM: str
