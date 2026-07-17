@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings, SettingsConifgDict
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     DATABASE_URL: str
@@ -6,9 +6,11 @@ class Settings(BaseSettings):
     ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
 
-    model_config = SettingsConifgDict(
+    model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore"
     )
+
+print("config laoded")
 
 settings = Settings()
