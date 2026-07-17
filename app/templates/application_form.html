@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if application %}Edit Application{% else %}Log Application{% endif %} - Job Tracker
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-lg border-0 rounded-4 mb-5">
+            <div class="card-header bg-dark text-white rounded-top-4 py-3">
+                <h4 class="mb-0 fw-semibold">
+                    {% if application %}Edit Job Application{% else %}Log a New Job Application{% endif %}
+                </h4>
+            </div>
+            <div class="card-body p-4 p-md-5">
+                
+                {% if error %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <strong>Error:</strong> {{ error }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endif %}
+
+                <form action="{% if application %}/applications/{{ application.id }}/edit{% else %}/applications/new{% endif %}" method="post">
+                    
+                    <h5 class="text-primary fw-bold mb-3">Company Details</h5>
+                    <div class="row g-3 mb-5">
+                        <div class="col-md-12 position-relative">
+                            <label for="company_name" class="form-label fw-semibold">Company Name <span class="text-danger">*</span></label>
+                            <input type="hidden" id="company_id" name="company_id" value="{{ application.company_id if application else '' }}">
+                            <input type="text" class="form-control form-control-lg bg-light border-0" id="company_name" name="company_name" required placeholder="e.g. Acme Corp" autocomplete="off" value="{{ application.company.name if application else '' }}">
+                            <ul id="company_suggestions" class="dropdown-menu w-100 shadow-sm mt-1" style="display: none; max-height: 200px; overflow-y: auto;">
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="company_website" class="form-label text-muted fw-semibold">Company Website</label>
+                            <input type="url" class="form-control bg-light border-0" id="company_website" name="company_website" placeholder="https://..." value="{{ application.company.website if application else '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="company_email" class="form-label text-muted fw-semibold">Contact Email</label>
+                            <input type="email" class="form-control bg-light border-0" id="company_email" name="company_email" placeholder="hr@acme.com" value="{{ application.company.email if application else '' }}">
+                        </div>
+                    </div>
+
+                    <h5 class="text-primary fw-bold mb-3">Application Details</h5>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label for="position" class="form-label fw-semibold">Position Applied For <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control form-control-lg bg-light border-0" id="position" name="position" required placeholder="e.g. Backend Engineer" value="{{ application.position if application else '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="application_method" class="form-label fw-semibold">Application Method <span class="text-danger">*</span></label>
+                            <select class="form-select form-select-lg bg-light border-0" id="application_method" name="application_method" required>
+                                <option value="Company Website" {% if application and application.application_method == 'Company Website' %}selected{% endif %}>Company Website</option>
+                                <option value="LinkedIn" {% if application and application.application_method == 'LinkedIn' %}selected{% endif %}>LinkedIn</option>
+                                <option value="Referral" {% if application and application.application_method == 'Referral' %}selected{% endif %}>Referral</option>
+                                <option value="Cold Email" {% if application and application.application_method == 'Cold Email' %}selected{% endif %}>Cold Email</option>
+                                <option value="Job Board" {% if application and application.application_method == 'Job Board' %}selected{% endif %}>Other Job Board</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="applied_date" class="form-label fw-semibold">Applied Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control bg-light border-0" id="applied_date" name="applied_date" required value="{{ application.applied_date.strftime('%Y-%m-%d') if application else '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="resume_version" class="form-label text-muted fw-semibold">Resume Version</label>
+                            <input type="text" class="form-control bg-light border-0" id="resume_version" name="resume_version" placeholder="e.g. v2_Backend" value="{{ application.resume_version if application else '' }}">
+                        </div>
+                        <div class="col-md-12">
+                            <label for="job_post_url" class="form-label text-muted fw-semibold">Job Posting URL</label>
+                            <input type="url" class="form-control bg-light border-0" id="job_post_url" name="job_post_url" placeholder="https://..." value="{{ application.job_post_url if application else '' }}">
+                        </div>
+                        
+                        <!-- ONLY DISPLAY ON EDIT -->
+                        {% if application %}
+                        <div class="col-md-6 mt-4">
+                            <label for="status" class="form-label fw-semibold text-danger">Current Status <span class="text-danger">*</span></label>
+                            <select class="form-select bg-light border-0" id="status" name="status" required>
+                                <option value="ACTIVE" {% if application.status.value == 'ACTIVE' %}selected{% endif %}>ACTIVE</option>
+                                <option value="REJECTED" {% if application.status.value == 'REJECTED' %}selected{% endif %}>REJECTED</option>
+                                <option value="OFFER" {% if application.status.value == 'OFFER' %}selected{% endif %}>OFFER</option>
+                                <option value="GHOSTED" {% if application.status.value == 'GHOSTED' %}selected{% endif %}>GHOSTED</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mt-4">
+                            <label for="next_followup_date" class="form-label fw-semibold text-danger">Next Follow-up Date</label>
+                            <input type="date" class="form-control bg-light border-0" id="next_followup_date" name="next_followup_date" value="{{ application.next_followup_date.strftime('%Y-%m-%d') if application and application.next_followup_date else '' }}">
+                        </div>
+                        {% endif %}
+
+                        <div class="col-md-12 mt-4">
+                            <label for="notes" class="form-label text-muted fw-semibold">Notes</label>
+                            <textarea class="form-control bg-light border-0" id="notes" name="notes" rows="3" placeholder="Any initial thoughts or connections...">{{ application.notes if application else '' }}</textarea>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="d-flex justify-content-end gap-3">
+                        <a href="/applications" class="btn btn-outline-secondary btn-lg">Cancel</a>
+                        <button type="submit" class="btn btn-primary btn-lg px-5">{% if application %}Save Changes{% else %}Save Application{% endif %}</button>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // 1. Auto-fill today's date ONLY if creating a new application
+    {% if not application %}
+        document.getElementById('applied_date').valueAsDate = new Date();
+    {% endif %}
+
+    // 2. Vanilla JS Autocomplete Logic
+    const companyInput = document.getElementById('company_name');
+    const companyIdInput = document.getElementById('company_id');
+    const suggestionsBox = document.getElementById('company_suggestions');
+    
+    let debounceTimer;
+
+    companyInput.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        const query = this.value.trim();
+        
+        // Every time the user types, assume it's a new company unless they explicitly click a suggestion
+        companyIdInput.value = "";
+        
+        if (query.length < 1) {
+            suggestionsBox.style.display = 'none';
+            return;
+        }
+
+        debounceTimer = setTimeout(() => {
+            fetch(`/api/companies/search?q=${encodeURIComponent(query)}`)
+                .then(response => {
+                    if (response.status === 401) {
+                        window.location.href = '/login';
+                        throw new Error('Unauthorized');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    suggestionsBox.innerHTML = '';
+                    
+                    if (data.length > 0) {
+                        data.forEach(company => {
+                            const li = document.createElement('li');
+                            const a = document.createElement('a');
+                            a.className = 'dropdown-item';
+                            a.href = 'javascript:void(0)';
+                            a.style.cursor = 'pointer';
+                            a.textContent = company.name;
+                            
+                            a.addEventListener('click', function() {
+                                companyInput.value = company.name; 
+                                companyIdInput.value = company.id; 
+                                suggestionsBox.style.display = 'none'; 
+                            });
+                            
+                            li.appendChild(a);
+                            suggestionsBox.appendChild(li);
+                        });
+                        suggestionsBox.style.display = 'block';
+                    } else {
+                        suggestionsBox.style.display = 'none';
+                    }
+                })
+                .catch(error => console.error('Error fetching companies:', error));
+        }, 300);
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!companyInput.contains(e.target) && !suggestionsBox.contains(e.target)) {
+            suggestionsBox.style.display = 'none';
+        }
+    });
+});
+</script>
+{% endblock %}

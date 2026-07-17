@@ -1,5 +1,6 @@
+from typing import List
 from sqlalchemy import Integer, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
@@ -28,3 +29,7 @@ class User(Base):
         String,
         nullable=False
     )
+
+    # Relationships
+    companies: Mapped[List["Company"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    applications: Mapped[List["JobApplication"]] = relationship(back_populates="user", cascade="all, delete-orphan")

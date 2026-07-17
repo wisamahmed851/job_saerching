@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}{{ application.company.name }} - {{ application.position }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold mb-1">{{ application.position }}</h2>
+        <h5 class="text-muted mb-0">{{ application.company.name }}</h5>
+    </div>
+    <div class="col-md-4 text-md-end mt-3 mt-md-0">
+        <a href="/applications" class="btn btn-outline-secondary me-2">Back to Applications</a>
+        <a href="/applications/{{ application.id }}/edit" class="btn btn-primary">Edit Application</a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Application Details Card -->
+    <div class="col-lg-8 mb-4">
+        <div class="card shadow-sm border-0 rounded-4 h-100">
+            <div class="card-header bg-white py-3 border-bottom-0 rounded-top-4">
+                <h5 class="mb-0 fw-bold">Application Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-sm-4 text-muted fw-semibold">Status</div>
+                    <div class="col-sm-8">
+                        {% if application.status.value == 'ACTIVE' %}
+                            <span class="badge bg-success">ACTIVE</span>
+                        {% elif application.status.value == 'OFFER' %}
+                            <span class="badge bg-primary">OFFER</span>
+                        {% else %}
+                            <span class="badge bg-secondary">{{ application.status.value }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-4 text-muted fw-semibold">Application Method</div>
+                    <div class="col-sm-8">{{ application.application_method }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-4 text-muted fw-semibold">Applied Date</div>
+                    <div class="col-sm-8">{{ application.applied_date.strftime('%B %d, %Y') }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-4 text-muted fw-semibold">Next Follow-up</div>
+                    <div class="col-sm-8">
+                        {% if application.next_followup_date %}
+                            <span class="{% if application.status.value == 'ACTIVE' %}text-danger fw-semibold{% endif %}">
+                                {{ application.next_followup_date.strftime('%B %d, %Y') }}
+                            </span>
+                        {% else %}
+                            <span class="text-muted">None scheduled</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-4 text-muted fw-semibold">Resume Version</div>
+                    <div class="col-sm-8">{{ application.resume_version or '<span class="text-muted">Not specified</span>'|safe }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-4 text-muted fw-semibold">Job Posting</div>
+                    <div class="col-sm-8">
+                        {% if application.job_post_url %}
+                            <a href="{{ application.job_post_url }}" target="_blank">View Posting</a>
+                        {% else %}
+                            <span class="text-muted">N/A</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-4 text-muted fw-semibold">Notes</div>
+                    <div class="col-sm-8">{{ application.notes or '<span class="text-muted">No initial notes</span>'|safe }}</div>
+                </div>
+                
+                <hr class="text-muted">
+                
+                <div class="row mb-2">
+                    <div class="col-sm-4 text-muted fw-semibold small">Record Created</div>
+                    <div class="col-sm-8 text-muted small">{{ application.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+                </div>
+                <div class="row">
+                    <div class="col-sm-4 text-muted fw-semibold small">Last Updated</div>
+                    <div class="col-sm-8 text-muted small">{{ application.updated_at.strftime('%Y-%m-%d %H:%M') }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Company Details Card -->
+    <div class="col-lg-4 mb-4">
+        <div class="card shadow-sm border-0 rounded-4 h-100">
+            <div class="card-header bg-white py-3 border-bottom-0 rounded-top-4">
+                <h5 class="mb-0 fw-bold">Company Info</h5>
+            </div>
+            <div class="card-body">
+                <h6 class="fw-bold fs-5 mb-4">{{ application.company.name }}</h6>
+                <div class="mb-4">
+                    <small class="text-muted d-block fw-semibold mb-1">Company Website</small>
+                    {% if application.company.website %}
+                        <a href="{{ application.company.website }}" target="_blank">{{ application.company.website }}</a>
+                    {% else %}
+                        <span class="text-muted">Not provided</span>
+                    {% endif %}
+                </div>
+                <div class="mb-4">
+                    <small class="text-muted d-block fw-semibold mb-1">Contact Email</small>
+                    {% if application.company.email %}
+                        <a href="mailto:{{ application.company.email }}">{{ application.company.email }}</a>
+                    {% else %}
+                        <span class="text-muted">Not provided</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-footer bg-white border-top-0 rounded-bottom-4 pt-0 pb-4 text-center">
+                <form action="/applications/{{ application.id }}/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this application entirely? This cannot be undone.');">
+                    <button type="submit" class="btn btn-outline-danger w-100">Delete Application</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Follow-up History -->
+<div class="card shadow-sm border-0 rounded-4 mb-5">
+    <div class="card-header bg-white py-3 border-bottom-0 rounded-top-4 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold">Follow-up History</h5>
+        <!-- Stub button for future functionality -->
+        <button class="btn btn-sm btn-outline-primary disabled" title="Logging follow-ups is coming soon">Log Interaction</button>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive rounded-bottom-4">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="py-3 px-4">Date</th>
+                        <th class="py-3">Type</th>
+                        <th class="py-3">Response</th>
+                        <th class="py-3">Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for followup in application.followups %}
+                    <tr>
+                        <td class="px-4 fw-semibold">{{ followup.followup_date.strftime('%b %d, %Y') }}</td>
+                        <!-- Display placeholders for Type and Response since they aren't in the DB schema yet -->
+                        <td><span class="text-muted small">Standard Update</span></td>
+                        <td><span class="text-muted small">N/A</span></td>
+                        <td>{{ followup.notes or '-' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center py-5 text-muted">
+                            No follow-ups recorded yet.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
