@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
 from app.db.session import engine
 from app.db.base import Base
-from app.api.routes import auth, users, pages, companies
+from app.api.routes import auth, users, pages, companies, excel
 import os
 import app.models
 
@@ -29,6 +29,7 @@ os.makedirs("app/static/images", exist_ok=True)
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
+app.include_router(excel.router, prefix="/applications", tags=["excel"])
 app.include_router(pages.router, tags=["pages"])
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(users.router, prefix="/users", tags=["users"])

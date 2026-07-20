@@ -8,8 +8,14 @@
         <h2 class="fw-bold mb-1">All Applications</h2>
         <p class="text-muted mb-0">Manage, filter, and track every application you've submitted.</p>
     </div>
-    <div class="col-md-4 text-md-end mt-3 mt-md-0">
+    <div class="col-md-4 text-md-end mt-3 mt-md-0 d-flex justify-content-md-end gap-2 flex-wrap">
         <a href="/applications/new" class="btn btn-primary">+ New Application</a>
+        <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#importModal">
+            Import Excel
+        </button>
+        <a href="/applications/export" class="btn btn-outline-secondary">
+            Export Excel
+        </a>
     </div>
 </div>
 
@@ -145,67 +151,101 @@
     </div>
 </div>
 
+<!-- Import Excel Modal -->
+<div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" id="importModalLabel">Import Excel Workbook</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body pt-2">
+                <p class="text-muted small mb-3">
+                    Upload a workbook previously exported from this application.
+                    All data will be imported into your account.
+                </p>
+
+                <!-- Error alert (hidden by default) -->
+                <div id="importError" class="alert alert-danger d-none" role="alert"></div>
+
+                <!-- Success alert (hidden by default) -->
+                <div id="importSuccess" class="alert alert-success d-none" role="alert"></div>
+
+                <form id="importForm" novalidate>
+                    <div class="mb-3">
+                        <label for="importFile" class="form-label fw-semibold">Choose Excel File</label>
+                        <input
+                            type="file"
+                            class="form-control"
+                            id="importFile"
+                            name="file"
+                            accept=".xlsx,.xlsm,.xltx,.xltm"
+                            required
+                        >
+                        <div class="form-text text-muted">Accepted format: .xlsx (exported from this app)</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="importSubmitBtn">
+                    <span id="importSpinner" class="spinner-border spinner-border-sm d-none me-1" role="status" aria-hidden="true"></span>
+                    Import
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-    // 1. JS Logic for stripping empty date fields to fix FastAPI Validation Errors
+document.addEventListener("DOMContentLoaded", function () {
+
+    // -----------------------------------------------------------------------
+    // Filter form: strip empty fields from the GET query string
+    // -----------------------------------------------------------------------
     const filterForm = document.getElementById('filterForm');
-    filterForm.addEventListener('submit', function(e) {
-        // Find all inputs in the form
-        const inputs = this.querySelectorAll('input, select');
-        inputs.forEach(input => {
-            // If the input is completely empty, disable it so the browser does NOT send it in the URL
-            if (!input.value.trim()) {
-                input.disabled = true;
-            }
+    filterForm.addEventListener('submit', function () {
+        this.querySelectorAll('input, select').forEach(function(input) {
+            if (!input.value.trim()) input.disabled = true;
         });
     });
 
-    // 2. Vanilla JS Autocomplete Logic for Company Filter
-    const companyInput = document.getElementById('company_name');
+    // -----------------------------------------------------------------------
+    // Company autocomplete
+    // -----------------------------------------------------------------------
+    const companyInput   = document.getElementById('company_name');
     const companyIdInput = document.getElementById('company_id');
     const suggestionsBox = document.getElementById('company_suggestions');
-    
     let debounceTimer;
 
-    companyInput.addEventListener('input', function() {
+    companyInput.addEventListener('input', function () {
         clearTimeout(debounceTimer);
         const query = this.value.trim();
-        
-        // Always reset ID when typing freely
         companyIdInput.value = "";
-        
-        if (query.length < 1) {
-            suggestionsBox.style.display = 'none';
-            return;
-        }
 
-        debounceTimer = setTimeout(() => {
-            fetch(`/api/companies/search?q=${encodeURIComponent(query)}`)
-                .then(response => {
-                    if (response.status === 401) {
-                        window.location.href = '/login';
-                        throw new Error('Unauthorized');
-                    }
-                    return response.json();
+        if (query.length < 1) { suggestionsBox.style.display = 'none'; return; }
+
+        debounceTimer = setTimeout(function() {
+            fetch('/api/companies/search?q=' + encodeURIComponent(query))
+                .then(function(r) {
+                    if (r.status === 401) { window.location.href = '/login'; throw new Error('Unauthorized'); }
+                    return r.json();
                 })
-                .then(data => {
+                .then(function(data) {
                     suggestionsBox.innerHTML = '';
-                    
                     if (data.length > 0) {
-                        data.forEach(company => {
+                        data.forEach(function(company) {
                             const li = document.createElement('li');
-                            const a = document.createElement('a');
-                            a.className = 'dropdown-item';
-                            a.href = 'javascript:void(0)';
+                            const a  = document.createElement('a');
+                            a.className    = 'dropdown-item';
+                            a.href         = 'javascript:void(0)';
                             a.style.cursor = 'pointer';
-                            a.textContent = company.name;
-                            
-                            a.addEventListener('click', function() {
-                                companyInput.value = company.name; 
-                                companyIdInput.value = company.id; 
-                                suggestionsBox.style.display = 'none'; 
+                            a.textContent  = company.name;
+                            a.addEventListener('click', function () {
+                                companyInput.value   = company.name;
+                                companyIdInput.value = company.id;
+                                suggestionsBox.style.display = 'none';
                             });
-                            
                             li.appendChild(a);
                             suggestionsBox.appendChild(li);
                         });
@@ -214,15 +254,87 @@ document.addEventListener("DOMContentLoaded", function() {
                         suggestionsBox.style.display = 'none';
                     }
                 })
-                .catch(error => console.error('Error fetching companies:', error));
+                .catch(function(err) { console.error('Company search error:', err); });
         }, 300);
     });
 
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', function (e) {
         if (!companyInput.contains(e.target) && !suggestionsBox.contains(e.target)) {
             suggestionsBox.style.display = 'none';
         }
     });
+
+    // -----------------------------------------------------------------------
+    // Import modal
+    // -----------------------------------------------------------------------
+    const importForm      = document.getElementById('importForm');
+    const importFileInput = document.getElementById('importFile');
+    const importSubmitBtn = document.getElementById('importSubmitBtn');
+    const importSpinner   = document.getElementById('importSpinner');
+    const importError     = document.getElementById('importError');
+    const importSuccess   = document.getElementById('importSuccess');
+    const importModalEl   = document.getElementById('importModal');
+
+    // Reset modal state every time it opens
+    importModalEl.addEventListener('show.bs.modal', function () {
+        importForm.reset();
+        importError.classList.add('d-none');
+        importError.textContent = '';
+        importSuccess.classList.add('d-none');
+        importSuccess.textContent = '';
+        importSubmitBtn.disabled = false;
+        importSpinner.classList.add('d-none');
+    });
+
+    importSubmitBtn.addEventListener('click', function () {
+        // Clear previous messages
+        importError.classList.add('d-none');
+        importError.textContent = '';
+        importSuccess.classList.add('d-none');
+
+        const file = importFileInput.files[0];
+        if (!file) {
+            importError.textContent = 'Please choose an Excel file before importing.';
+            importError.classList.remove('d-none');
+            return;
+        }
+
+        // Show spinner, disable button
+        importSpinner.classList.remove('d-none');
+        importSubmitBtn.disabled = true;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        fetch('/applications/import', {
+            method: 'POST',
+            body: formData
+            // Do NOT set Content-Type — the browser sets it with the boundary
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            importSpinner.classList.add('d-none');
+            if (data.ok) {
+                importSuccess.textContent =
+                    'Import successful: ' + data.applications + ' application(s) and ' +
+                    data.followups + ' follow-up(s) imported.';
+                importSuccess.classList.remove('d-none');
+                // Reload the page after a short pause so the table refreshes
+                setTimeout(function() { window.location.reload(); }, 1800);
+            } else {
+                importError.textContent = data.error || 'Import failed. Please try again.';
+                importError.classList.remove('d-none');
+                importSubmitBtn.disabled = false;
+            }
+        })
+        .catch(function() {
+            importSpinner.classList.add('d-none');
+            importError.textContent = 'A network error occurred. Please check your connection and try again.';
+            importError.classList.remove('d-none');
+            importSubmitBtn.disabled = false;
+        });
+    });
+
 });
 </script>
 {% endblock %}
