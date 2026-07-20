@@ -18,3 +18,12 @@ class ApplicationCreate(BaseModel):
     status: ApplicationStatus | None = None
     resume_version: str | None = None
     notes: str | None = None
+
+from app.models.followup import FollowupType, FollowupResponse
+
+class FollowupCreate(BaseModel):
+    followup_date: date
+    followup_type: FollowupType
+    response: FollowupResponse
+    next_followup_date: date | None = None
+    notes: str | None = None

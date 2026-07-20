@@ -1,9 +1,10 @@
 from datetime import date, timedelta
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, asc
 from app.models.application import JobApplication, ApplicationStatus
 from app.models.company import Company
-from app.schemas.application import ApplicationCreate
+from app.models.followup import ApplicationFollowUp, FollowupResponse
+from app.schemas.application import ApplicationCreate, FollowupCreate
 from app.crud.company import get_or_create_company
 from app.crud.followup import create_followup
 
@@ -50,11 +51,17 @@ def create_job_application(db: Session, user_id: int, form_data: ApplicationCrea
 
 def get_due_followups(db: Session, user_id: int):
     today = date.today()
-    return db.query(JobApplication).filter(
-        JobApplication.user_id == user_id,
-        JobApplication.status == ApplicationStatus.ACTIVE,
-        JobApplication.next_followup_date <= today
-    ).order_by(JobApplication.next_followup_date.asc()).all()
+    return (
+        db.query(JobApplication)
+        .options(joinedload(JobApplication.followups))
+        .filter(
+            JobApplication.user_id == user_id,
+            JobApplication.status == ApplicationStatus.ACTIVE,
+            JobApplication.next_followup_date <= today,
+        )
+        .order_by(JobApplication.next_followup_date.asc())
+        .all()
+    )
 
 def get_recent_applications(db: Session, user_id: int, limit: int = 5):
     return db.query(JobApplication).filter(

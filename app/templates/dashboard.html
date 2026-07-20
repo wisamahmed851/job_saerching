@@ -51,8 +51,11 @@
                                     <p class="mb-1 text-muted">{{ app.company.name }}</p>
                                     <small class="text-danger fw-semibold">Due: {{ app.next_followup_date.strftime('%b %d, %Y') }}</small>
                                 </div>
-                                <div>
-                                    <span class="badge bg-warning text-dark">{{ app.status.value }}</span>
+                                <div class="text-end">
+                                    <span class="badge {% if app.followups|length >= max_followups %}bg-danger{% else %}bg-info text-dark{% endif %} mb-2 d-block">
+                                        Follow-ups: {{ app.followups|length }} / {{ max_followups }}
+                                    </span>
+                                    <a href="/applications/{{ app.id }}" class="btn btn-sm btn-outline-primary">Take Action</a>
                                 </div>
                             </div>
                         </li>

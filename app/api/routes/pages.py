@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from pydantic import ValidationError
+import sys
 
 from app.api.deps import get_db, get_current_user_web
 from app.crud.user import get_user_by_email
@@ -21,8 +22,10 @@ from app.crud.application import (
     get_application_by_id,
     update_job_application
 )
-from app.schemas.application import ApplicationCreate
+from app.crud.followup import create_followup
+from app.schemas.application import ApplicationCreate, FollowupCreate
 from app.models.application import ApplicationStatus
+from app.models.followup import FollowupType, FollowupResponse
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -79,20 +82,39 @@ def dashboard_page(
     current_user: User = Depends(get_current_user_web),
     db: Session = Depends(get_db)
 ):
-    due_followups = get_due_followups(db, current_user.id)
-    recent_applications = get_recent_applications(db, current_user.id)
-    stats = get_application_stats(db, current_user.id)
+    print("Dashboard route called")
+    sys.stdout.write(f"MAX_FOLLOWUPS = {settings.MAX_FOLLOWUPS}\n")
+    sys.stdout.flush()
+    import traceback
+    from fastapi.responses import PlainTextResponse
+    
+    try:
+        due_followups = get_due_followups(db, current_user.id)
+        recent_applications = get_recent_applications(db, current_user.id)
+        stats = get_application_stats(db, current_user.id)
 
-    return templates.TemplateResponse(
-        "dashboard.html", 
-        {
-            "request": request, 
-            "user": current_user,
-            "due_followups": due_followups,
-            "recent_applications": recent_applications,
-            "stats": stats
-        }
-    )
+        print("=" * 50)
+        print("MAX_FOLLOWUPS:", settings.MAX_FOLLOWUPS, flush=True)
+        print("TYPE:", type(settings.MAX_FOLLOWUPS), flush=True)
+        print("=" * 50)
+        
+        for app in due_followups:
+            print(app.next_followup_date)
+            print(type(app.next_followup_date))
+        return templates.TemplateResponse(
+            "dashboard.html", 
+            {
+                "request": request, 
+                "user": current_user,
+                "due_followups": due_followups,
+                "recent_applications": recent_applications,
+                "stats": stats,
+                "max_followups": settings.MAX_FOLLOWUPS
+            }
+        )
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        return PlainTextResponse(f"INTERNAL SERVER ERROR :\n\n{error_trace}", status_code=500)
 
 @router.get("/applications", response_class=HTMLResponse)
 def list_applications_page(
@@ -199,6 +221,8 @@ def create_application_post(
 def view_application_page(
     application_id: int,
     request: Request,
+    success: str | None = Query(None),
+    error: str | None = Query(None),
     current_user: User = Depends(get_current_user_web),
     db: Session = Depends(get_db)
 ):
@@ -208,7 +232,13 @@ def view_application_page(
         
     return templates.TemplateResponse(
         "application_detail.html",
-        {"request": request, "user": current_user, "application": application}
+        {
+            "request": request, 
+            "user": current_user, 
+            "application": application,
+            "success": success,
+            "error": error
+        }
     )
 
 @router.get("/applications/{application_id}/edit", response_class=HTMLResponse)
@@ -285,3 +315,35 @@ def delete_application_action(
 ):
     delete_application(db, user_id=current_user.id, application_id=application_id)
     return RedirectResponse(url="/applications", status_code=302)
+
+@router.post("/applications/{application_id}/followup", response_class=HTMLResponse)
+def add_followup_post(
+    application_id: int,
+    request: Request,
+    followup_date: date = Form(...),
+    followup_type: FollowupType = Form(...),
+    response: FollowupResponse = Form(...),
+    next_followup_date: date | None = Form(None),
+    notes: str | None = Form(None),
+    current_user: User = Depends(get_current_user_web),
+    db: Session = Depends(get_db)
+):
+    """
+    Handles the Follow-up Modal submission.
+    """
+    try:
+        form_data = FollowupCreate(
+            followup_date=followup_date,
+            followup_type=followup_type,
+            response=response,
+            next_followup_date=next_followup_date,
+            notes=notes
+        )
+    except ValidationError:
+        return RedirectResponse(url=f"/applications/{application_id}?error=Invalid+form+data", status_code=302)
+        
+    followup = create_followup(db, current_user.id, application_id, form_data)
+    if not followup:
+        raise HTTPException(status_code=404, detail="Application not found")
+        
+    return RedirectResponse(url=f"/applications/{application_id}?success=Follow-up+Added+Successfully", status_code=302)

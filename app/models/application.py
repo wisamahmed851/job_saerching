@@ -12,6 +12,7 @@ class ApplicationStatus(str, enum.Enum):
     REJECTED = "REJECTED"
     OFFER = "OFFER"
     GHOSTED = "GHOSTED"
+    INTERVIEW = "INTERVIEW"
 
 class JobApplication(Base):
     __tablename__ = "job_applications"
