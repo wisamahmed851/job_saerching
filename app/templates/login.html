@@ -20,6 +20,13 @@
                 </div>
                 {% endif %}
 
+                {% if request.query_params.get('registered') %}
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <strong>Account created!</strong> You can now sign in.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endif %}
+
                 <!-- Normal HTML Login Form -->
                 <form action="/login" method="post">
                     <!-- CSRF placeholder for future-proofing -->
@@ -45,6 +52,13 @@
                         </button>
                     </div>
                 </form>
+
+                <hr class="my-4">
+
+                <p class="text-center text-muted mb-0">
+                    Don't have an account?
+                    <a href="/register" class="text-dark fw-semibold">Create one</a>
+                </p>
                 
             </div>
         </div>

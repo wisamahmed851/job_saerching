@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.models.application import JobApplication, ApplicationStatus
 from app.models.followup import ApplicationFollowUp, FollowupType, FollowupResponse
 from app.crud.company import get_or_create_company
+from app.crud.resume import get_resume_by_display_name
 
 
 # ---------------------------------------------------------------------------
@@ -39,7 +40,7 @@ APPLICATIONS_COLUMNS = [
     "Job Posting URL",
     "Applied Date",
     "Next Follow-up Date",
-    "Resume Version",
+    "Resume Name",
     "Status",
     "Notes",
     "Created At",
@@ -59,8 +60,8 @@ FOLLOWUPS_COLUMNS = [
 ]
 
 # Required columns the importer must find (subset — derived cols are excluded)
+# Application ID is intentionally NOT required — blank IDs are treated as new applications.
 REQUIRED_APP_COLUMNS = {
-    "Application ID",
     "Company Name",
     "Position",
     "Application Method",
@@ -165,7 +166,7 @@ def export_to_excel(db: Session, user_id: int) -> bytes:
             app.job_post_url or "",
             _fmt_date(app.applied_date),
             _fmt_date(app.next_followup_date),
-            app.resume_version or "",
+            app.resume.display_name if app.resume else "",
             app.status.value,
             app.notes or "",
             _fmt_date(app.created_at),
@@ -371,7 +372,14 @@ def import_from_excel(db: Session, user_id: int, file_bytes: bytes) -> dict:
     _validate_columns(fu_col, REQUIRED_FOLLOWUP_COLUMNS, FOLLOWUPS_SHEET)
 
     # --- Parse Applications rows ---
+    # row_key: the value used internally to link follow-ups to applications.
+    # - If "Application ID" is supplied and is a valid integer  → use it as the key.
+    # - If "Application ID" is blank                            → use -(row_num) as a
+    #   synthetic negative key (never written to the DB; PG generates the real PK).
+    # Duplicate supplied IDs within the same import file are still an error.
     parsed_apps: list[dict] = []
+    seen_supplied_ids: set[int] = set()
+
     for row_num, row in enumerate(app_rows, start=2):
         original_id_raw = _cell_value(row, app_col, "Application ID")
         company_name = _cell_value(row, app_col, "Company Name")
@@ -385,16 +393,26 @@ def import_from_excel(db: Session, user_id: int, file_bytes: bytes) -> dict:
             raise ImportError(f"Row {row_num} in '{APPLICATIONS_SHEET}': 'Position' is required.")
         if not application_method:
             raise ImportError(f"Row {row_num} in '{APPLICATIONS_SHEET}': 'Application Method' is required.")
-        if original_id_raw is None:
-            raise ImportError(f"Row {row_num} in '{APPLICATIONS_SHEET}': 'Application ID' is required.")
 
-        try:
-            original_id = int(original_id_raw)
-        except (ValueError, TypeError):
-            raise ImportError(
-                f"Row {row_num} in '{APPLICATIONS_SHEET}': "
-                f"'Application ID' must be a number, got '{original_id_raw}'."
-            )
+        # --- Application ID: optional ---
+        if original_id_raw is None:
+            # Blank — assign synthetic internal key (negative, never touches DB)
+            row_key = -row_num
+        else:
+            try:
+                row_key = int(original_id_raw)
+            except (ValueError, TypeError):
+                raise ImportError(
+                    f"Row {row_num} in '{APPLICATIONS_SHEET}': "
+                    f"'Application ID' must be a number or blank, got '{original_id_raw}'."
+                )
+            # Only check duplicates for explicitly supplied IDs
+            if row_key in seen_supplied_ids:
+                raise ImportError(
+                    f"Row {row_num} in '{APPLICATIONS_SHEET}': "
+                    f"Duplicate 'Application ID' {row_key}. Each supplied ID must be unique."
+                )
+            seen_supplied_ids.add(row_key)
 
         applied_date = _parse_date(applied_date_raw, "Applied Date", row_num)
         if applied_date is None:
@@ -406,7 +424,7 @@ def import_from_excel(db: Session, user_id: int, file_bytes: bytes) -> dict:
         status = _parse_status(_cell_value(row, app_col, "Status"), row_num)
 
         parsed_apps.append({
-            "original_id": original_id,
+            "row_key": row_key,          # internal mapping key only, never written to DB
             "company_name": company_name,
             "company_website": _cell_value(row, app_col, "Company Website"),
             "company_email": _cell_value(row, app_col, "Company Email"),
@@ -415,7 +433,7 @@ def import_from_excel(db: Session, user_id: int, file_bytes: bytes) -> dict:
             "job_post_url": _cell_value(row, app_col, "Job Posting URL"),
             "applied_date": applied_date,
             "next_followup_date": next_followup_date,
-            "resume_version": _cell_value(row, app_col, "Resume Version"),
+            "resume_name": _cell_value(row, app_col, "Resume Name"),
             "status": status,
             "notes": _cell_value(row, app_col, "Notes"),
         })
@@ -428,16 +446,18 @@ def import_from_excel(db: Session, user_id: int, file_bytes: bytes) -> dict:
         fu_type_raw = _cell_value(row, fu_col, "Follow-up Type")
         fu_response_raw = _cell_value(row, fu_col, "Response")
 
+        # Application ID on follow-ups: blank is allowed (treated as new-app reference).
+        # Must be a valid integer when supplied.
         if app_id_raw is None:
-            raise ImportError(f"Row {row_num} in '{FOLLOWUPS_SHEET}': 'Application ID' is required.")
-
-        try:
-            original_app_id = int(app_id_raw)
-        except (ValueError, TypeError):
-            raise ImportError(
-                f"Row {row_num} in '{FOLLOWUPS_SHEET}': "
-                f"'Application ID' must be a number, got '{app_id_raw}'."
-            )
+            ref_key = -row_num  # synthetic — will be resolved via id_map below
+        else:
+            try:
+                ref_key = int(app_id_raw)
+            except (ValueError, TypeError):
+                raise ImportError(
+                    f"Row {row_num} in '{FOLLOWUPS_SHEET}': "
+                    f"'Application ID' must be a number or blank, got '{app_id_raw}'."
+                )
 
         fu_date = _parse_date(fu_date_raw, "Follow-up Date", row_num)
         if fu_date is None:
@@ -447,7 +467,7 @@ def import_from_excel(db: Session, user_id: int, file_bytes: bytes) -> dict:
         fu_response = _parse_followup_response(fu_response_raw, row_num)
 
         parsed_followups.append({
-            "original_app_id": original_app_id,
+            "ref_key": ref_key,
             "followup_date": fu_date,
             "followup_type": fu_type,
             "response": fu_response,
@@ -455,16 +475,17 @@ def import_from_excel(db: Session, user_id: int, file_bytes: bytes) -> dict:
         })
 
     # --- Validate follow-up references ---
-    original_ids = {a["original_id"] for a in parsed_apps}
+    # A follow-up's ref_key must match some app's row_key in this import batch.
+    row_keys = {a["row_key"] for a in parsed_apps}
     for fu in parsed_followups:
-        if fu["original_app_id"] not in original_ids:
+        if fu["ref_key"] not in row_keys:
             raise ImportError(
-                f"FollowUps sheet references Application ID {fu['original_app_id']} "
+                f"FollowUps sheet references Application ID {fu['ref_key']} "
                 "which does not exist in the Applications sheet."
             )
 
     # --- All validation passed — write to database inside a single transaction ---
-    # Map original_id -> new JobApplication object
+    # Maps row_key (internal) -> newly created JobApplication (with real PG-generated PK)
     id_map: dict[int, JobApplication] = {}
 
     try:
@@ -478,11 +499,22 @@ def import_from_excel(db: Session, user_id: int, file_bytes: bytes) -> dict:
                 website=app_data["company_website"],
                 email=app_data["company_email"],
             )
-            # Update website/email only when the imported value is non-empty
+            # Update website/email only when the existing field is currently NULL/empty
             if app_data["company_website"] and not company.website:
                 company.website = app_data["company_website"]
             if app_data["company_email"] and not company.email:
                 company.email = app_data["company_email"]
+
+            # Resolve resume by display name — never fail if not found
+            resume_id = None
+            if app_data["resume_name"]:
+                matched = get_resume_by_display_name(
+                    db=db,
+                    user_id=user_id,
+                    display_name=app_data["resume_name"],
+                )
+                if matched:
+                    resume_id = matched.id
 
             new_app = JobApplication(
                 position=app_data["position"],
@@ -490,19 +522,19 @@ def import_from_excel(db: Session, user_id: int, file_bytes: bytes) -> dict:
                 job_post_url=app_data["job_post_url"],
                 applied_date=app_data["applied_date"],
                 next_followup_date=app_data["next_followup_date"],
-                resume_version=app_data["resume_version"],
+                resume_id=resume_id,
                 notes=app_data["notes"],
                 status=app_data["status"],
                 user_id=user_id,
                 company_id=company.id,
             )
             db.add(new_app)
-            db.flush()  # Populate new_app.id without committing
-            id_map[app_data["original_id"]] = new_app
+            db.flush()  # PostgreSQL assigns the real PK here — row_key is never written
+            id_map[app_data["row_key"]] = new_app
 
-        # 2. Follow-ups
+        # 2. Follow-ups — resolved via id_map using ref_key
         for fu_data in parsed_followups:
-            new_app = id_map[fu_data["original_app_id"]]
+            new_app = id_map[fu_data["ref_key"]]
             fu = ApplicationFollowUp(
                 application_id=new_app.id,
                 followup_date=fu_data["followup_date"],

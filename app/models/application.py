@@ -1,11 +1,14 @@
 import enum
 from datetime import date, datetime
-from typing import List
+from typing import List, TYPE_CHECKING
 from sqlalchemy import Integer, String, Date, ForeignKey, Enum, Text, DateTime
 from sqlalchemy.sql import func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.resume import Resume
 
 class ApplicationStatus(str, enum.Enum):
     ACTIVE = "ACTIVE"
@@ -23,7 +26,6 @@ class JobApplication(Base):
     job_post_url: Mapped[str | None] = mapped_column(String, nullable=True)
     applied_date: Mapped[date] = mapped_column(Date, nullable=False)
     next_followup_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    resume_version: Mapped[str | None] = mapped_column(String, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[ApplicationStatus] = mapped_column(
         Enum(ApplicationStatus, name="applicationstatus_enum"), 
@@ -36,8 +38,10 @@ class JobApplication(Base):
     # Foreign Keys
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"), nullable=False)
+    resume_id: Mapped[int | None] = mapped_column(ForeignKey("resumes.id"), nullable=True)
 
     # Relationships
     user: Mapped["User"] = relationship(back_populates="applications")
     company: Mapped["Company"] = relationship(back_populates="applications")
     followups: Mapped[List["ApplicationFollowUp"]] = relationship(back_populates="application", cascade="all, delete-orphan")
+    resume: Mapped["Resume | None"] = relationship(back_populates="applications")

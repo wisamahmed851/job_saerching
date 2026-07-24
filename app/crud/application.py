@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, asc
 from app.models.application import JobApplication, ApplicationStatus
 from app.models.company import Company
-from app.models.followup import ApplicationFollowUp, FollowupResponse
+from app.models.followup import ApplicationFollowUp, FollowupType, FollowupResponse
 from app.schemas.application import ApplicationCreate, FollowupCreate
 from app.crud.company import get_or_create_company
 from app.crud.followup import create_followup
@@ -29,7 +29,7 @@ def create_job_application(db: Session, user_id: int, form_data: ApplicationCrea
         job_post_url=form_data.job_post_url,
         applied_date=form_data.applied_date,
         next_followup_date=next_followup,
-        resume_version=form_data.resume_version,
+        resume_id=form_data.resume_id,
         notes=form_data.notes,
         user_id=user_id,
         company_id=company.id,
@@ -42,9 +42,15 @@ def create_job_application(db: Session, user_id: int, form_data: ApplicationCrea
     # 4. Create initial follow-up history log based on the application event itself
     create_followup(
         db=db,
+        user_id=user_id,
         application_id=application.id,
-        followup_date=form_data.applied_date,
-        notes=f"Initial application submitted via {form_data.application_method}."
+        form_data=FollowupCreate(
+            followup_date=form_data.applied_date,
+            followup_type=FollowupType.OTHER,
+            response=FollowupResponse.WAITING,
+            notes=f"Initial application submitted via {form_data.application_method}.",
+            next_followup_date=next_followup,
+        )
     )
     
     return application
@@ -168,7 +174,7 @@ def update_job_application(
     application.application_method = form_data.application_method
     application.job_post_url = form_data.job_post_url
     application.applied_date = form_data.applied_date
-    application.resume_version = form_data.resume_version
+    application.resume_id = form_data.resume_id
     application.notes = form_data.notes
     application.next_followup_date = form_data.next_followup_date
     

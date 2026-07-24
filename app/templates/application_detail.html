@@ -26,11 +26,11 @@
                     <div class="col-sm-4 text-muted fw-semibold">Status</div>
                     <div class="col-sm-8">
                         {% if application.status.value == 'ACTIVE' %}
-                            <span class="badge bg-success">ACTIVE</span>
+                        <span class="badge bg-success">ACTIVE</span>
                         {% elif application.status.value == 'OFFER' %}
-                            <span class="badge bg-primary">OFFER</span>
+                        <span class="badge bg-primary">OFFER</span>
                         {% else %}
-                            <span class="badge bg-secondary">{{ application.status.value }}</span>
+                        <span class="badge bg-secondary">{{ application.status.value }}</span>
                         {% endif %}
                     </div>
                 </div>
@@ -46,35 +46,46 @@
                     <div class="col-sm-4 text-muted fw-semibold">Next Follow-up</div>
                     <div class="col-sm-8">
                         {% if application.next_followup_date %}
-                            <span class="{% if application.status.value == 'ACTIVE' %}text-danger fw-semibold{% endif %}">
-                                {{ application.next_followup_date.strftime('%B %d, %Y') }}
-                            </span>
+                        <span class="{% if application.status.value == 'ACTIVE' %}text-danger fw-semibold{% endif %}">
+                            {{ application.next_followup_date.strftime('%B %d, %Y') }}
+                        </span>
                         {% else %}
-                            <span class="text-muted">None scheduled</span>
+                        <span class="text-muted">None scheduled</span>
                         {% endif %}
                     </div>
                 </div>
                 <div class="row mb-3">
-                    <div class="col-sm-4 text-muted fw-semibold">Resume Version</div>
-                    <div class="col-sm-8">{{ application.resume_version or '<span class="text-muted">Not specified</span>'|safe }}</div>
+                    <div class="col-sm-4 text-muted fw-semibold">Resume</div>
+                    <div class="col-sm-8">
+                        {% if application.resume %}
+                        <span class="me-2">{{ application.resume.display_name }}</span>
+                        <a href="/resumes/{{ application.resume.id }}/download"
+                            class="btn btn-sm btn-outline-secondary">
+                            ⬇ Download
+                        </a>
+                        {% else %}
+                        <span class="text-muted">No Resume Attached</span>
+                        {% endif %}
+                    </div>
                 </div>
                 <div class="row mb-3">
                     <div class="col-sm-4 text-muted fw-semibold">Job Posting</div>
                     <div class="col-sm-8">
                         {% if application.job_post_url %}
-                            <a href="{{ application.job_post_url }}" target="_blank">View Posting</a>
+                        <a href="{{ application.job_post_url }}" target="_blank">View Posting</a>
                         {% else %}
-                            <span class="text-muted">N/A</span>
+                        <span class="text-muted">N/A</span>
                         {% endif %}
                     </div>
                 </div>
                 <div class="row mb-3">
                     <div class="col-sm-4 text-muted fw-semibold">Notes</div>
-                    <div class="col-sm-8">{{ application.notes or '<span class="text-muted">No initial notes</span>'|safe }}</div>
+                    <div class="col-sm-8">{{ application.notes or '<span class="text-muted">No initial
+                            notes</span>'|safe }}</div>
                 </div>
-                
+
                 <hr class="text-muted">
-                
+
                 <div class="row mb-2">
                     <div class="col-sm-4 text-muted fw-semibold small">Record Created</div>
                     <div class="col-sm-8 text-muted small">{{ application.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
@@ -98,22 +109,23 @@
                 <div class="mb-4">
                     <small class="text-muted d-block fw-semibold mb-1">Company Website</small>
                     {% if application.company.website %}
-                        <a href="{{ application.company.website }}" target="_blank">{{ application.company.website }}</a>
+                    <a href="{{ application.company.website }}" target="_blank">{{ application.company.website }}</a>
                     {% else %}
-                        <span class="text-muted">Not provided</span>
+                    <span class="text-muted">Not provided</span>
                     {% endif %}
                 </div>
                 <div class="mb-4">
                     <small class="text-muted d-block fw-semibold mb-1">Contact Email</small>
                     {% if application.company.email %}
-                        <a href="mailto:{{ application.company.email }}">{{ application.company.email }}</a>
+                    <a href="mailto:{{ application.company.email }}">{{ application.company.email }}</a>
                     {% else %}
-                        <span class="text-muted">Not provided</span>
+                    <span class="text-muted">Not provided</span>
                     {% endif %}
                 </div>
             </div>
             <div class="card-footer bg-white border-top-0 rounded-bottom-4 pt-0 pb-4 text-center">
-                <form action="/applications/{{ application.id }}/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this application entirely? This cannot be undone.');">
+                <form action="/applications/{{ application.id }}/delete" method="POST"
+                    onsubmit="return confirm('Are you sure you want to delete this application entirely? This cannot be undone.');">
                     <button type="submit" class="btn btn-outline-danger w-100">Delete Application</button>
                 </form>
             </div>
@@ -121,113 +133,320 @@
     </div>
 </div>
 
+<!-- Flash Messages -->
+{% if success %}
+<div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+    {{ success }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+{% if error %}
+<div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+    <strong>Error:</strong> {{ error }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
 <!-- Follow-up Timeline -->
 <div class="card shadow-sm border-0 rounded-4 mb-5">
-    <div class="card-header bg-white py-3 border-bottom-0 rounded-top-4 d-flex justify-content-between align-items-center">
+    <div
+        class="card-header bg-white py-3 border-bottom-0 rounded-top-4 d-flex justify-content-between align-items-center">
         <h5 class="mb-0 fw-bold">Timeline</h5>
-        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#followupModal">
-            + Add Follow-up
-        </button>
+        <div class="d-flex gap-2">
+            {% if application.company.email %}
+            <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal"
+                data-bs-target="#emailModal">
+                ✉ Send Follow-up Email
+            </button>
+            {% endif %}
+            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
+                data-bs-target="#followupModal">
+                + Add Follow-up
+            </button>
+        </div>
     </div>
     <div class="card-body">
         <div class="position-relative ms-3 border-start border-2 border-primary pb-3">
-            
+
             <!-- Initial Application Event -->
             <div class="position-relative mb-4 ps-4">
-                <span class="position-absolute top-0 start-0 translate-middle p-2 bg-primary rounded-circle border border-2 border-white"></span>
+                <span
+                    class="position-absolute top-0 start-0 translate-middle p-2 bg-primary rounded-circle border border-2 border-white"></span>
                 <h6 class="fw-bold mb-1">Application Submitted</h6>
                 <p class="text-muted small mb-0">{{ application.applied_date.strftime('%B %d, %Y') }}</p>
                 <p class="mb-0 small text-muted">Via {{ application.application_method }}</p>
             </div>
-            
+
             <!-- Follow-up Events -->
             {% for followup in application.followups|sort(attribute='followup_date') %}
             <div class="position-relative mb-4 ps-4">
-                <span class="position-absolute top-0 start-0 translate-middle p-2 bg-info rounded-circle border border-2 border-white"></span>
+                <span
+                    class="position-absolute top-0 start-0 translate-middle p-2 bg-info rounded-circle border border-2 border-white"></span>
                 <h6 class="fw-bold mb-1">{{ followup.followup_type.value }}</h6>
-                <p class="text-muted small mb-1">{{ followup.followup_date.strftime('%B %d, %Y') }} &bull; <span class="badge bg-light text-dark border">{{ followup.response.value }}</span></p>
+                <p class="text-muted small mb-1">{{ followup.followup_date.strftime('%B %d, %Y') }} &bull; <span
+                        class="badge bg-light text-dark border">{{ followup.response.value }}</span></p>
                 {% if followup.notes %}
                 <p class="mb-0 small bg-light p-2 rounded-3 text-muted">{{ followup.notes }}</p>
                 {% endif %}
             </div>
             {% endfor %}
-            
+
             <!-- Next Follow-up Scheduled (Ghosted/Scheduled) -->
             {% if application.next_followup_date and application.status.value not in ['REJECTED', 'OFFER', 'GHOSTED'] %}
             <div class="position-relative mb-0 ps-4">
-                <span class="position-absolute top-0 start-0 translate-middle p-2 bg-secondary rounded-circle border border-2 border-white" style="opacity: 0.5;"></span>
+                <span
+                    class="position-absolute top-0 start-0 translate-middle p-2 bg-secondary rounded-circle border border-2 border-white"
+                    style="opacity: 0.5;"></span>
                 <h6 class="fw-bold mb-1 text-muted">Scheduled Action</h6>
                 <p class="text-muted small mb-0">{{ application.next_followup_date.strftime('%B %d, %Y') }}</p>
             </div>
             {% endif %}
-            
+
         </div>
     </div>
 </div>
 
+<!-- Email Follow-up Modal -->
+{% if application.company.email %}
+<div class="modal fade" id="emailModal" tabindex="-1" aria-labelledby="emailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom-0">
+                <h5 class="modal-title fw-bold" id="emailModalLabel">✉ Send Follow-up Email</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="/applications/{{ application.id }}/send-email"
+                  method="POST"
+                  enctype="multipart/form-data"
+                  id="emailForm">
+                <div class="modal-body">
+
+                    <!-- To (readonly) -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-muted small">To</label>
+                        <input type="email" class="form-control bg-light border-0"
+                               value="{{ application.company.email }}" readonly>
+                    </div>
+
+                    <!-- Subject -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-muted small">Subject</label>
+                        <input type="text" class="form-control" name="subject" id="email_subject" required
+                               value="Follow-up regarding my application for {{ application.position }}">
+                    </div>
+
+                    <!-- Body -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-muted small">Message</label>
+                        <textarea class="form-control" name="body" id="email_body" rows="9" required>Hi {{ application.company.name }} Team,
+
+I hope you're doing well.
+
+I wanted to follow up regarding my application for the {{ application.position }} position. I remain very interested in the opportunity and wanted to check whether there are any updates regarding the hiring process.
+
+Thank you for your time and consideration.
+
+Best Regards,
+{{ user.username | title }}</textarea>
+                    </div>
+
+                    <!-- Next Follow-up Date -->
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold text-muted small">Next Follow-up Date</label>
+                        <input type="date" class="form-control" name="next_followup_date"
+                               id="email_next_followup_date">
+                    </div>
+
+                    <hr class="my-3">
+
+                    <!-- Resume Attachment (optional) -->
+                    <p class="fw-semibold text-muted small mb-3">Resume Attachment <span class="text-muted fw-normal">(Optional — choose one source or leave blank)</span></p>
+
+                    <!-- Option 1: existing resume dropdown -->
+                    <div class="mb-3" id="existingResumeSection">
+                        <label for="existing_resume_id" class="form-label text-muted small">Use Existing Resume</label>
+                        <select class="form-select" name="existing_resume_id" id="existing_resume_id">
+                            <option value="">— No Attachment —</option>
+                            {% for resume in resumes %}
+                            <option value="{{ resume.id }}">{{ resume.display_name }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if not resumes %}
+                        <div class="form-text text-muted">No CVs in your library yet. <a href="/resumes">Upload one.</a></div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Option 2: upload new file -->
+                    <div class="mb-1" id="newResumeSection">
+                        <label for="new_resume_file" class="form-label text-muted small">Or Upload a New Resume</label>
+                        <input type="file"
+                               class="form-control"
+                               name="new_resume_file"
+                               id="new_resume_file"
+                               accept=".pdf,.doc,.docx">
+                        <div class="form-text text-muted">PDF, DOC or DOCX · max 10 MB · will be saved to your CV Library</div>
+                        <div id="uploadValidationMsg" class="text-danger small mt-1 d-none"></div>
+                    </div>
+
+                </div>
+                <div class="modal-footer border-top-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success px-4" id="sendEmailBtn">
+                        <span id="sendBtnText">Send Email</span>
+                        <span id="sendBtnSpinner"
+                              class="spinner-border spinner-border-sm ms-1 d-none"
+                              role="status" aria-hidden="true"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Follow-up Modal -->
 <div class="modal fade" id="followupModal" tabindex="-1" aria-labelledby="followupModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content rounded-4 border-0 shadow">
-      <div class="modal-header border-bottom-0">
-        <h5 class="modal-title fw-bold" id="followupModalLabel">Log Follow-up</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <form action="/applications/{{ application.id }}/followup" method="POST">
-          <div class="modal-body">
-            <div class="mb-3">
-                <label class="form-label fw-semibold text-muted small">Follow-up Date</label>
-                <input type="date" class="form-control" name="followup_date" id="followup_date" required>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom-0">
+                <h5 class="modal-title fw-bold" id="followupModalLabel">Log Follow-up</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="mb-3">
-                <label class="form-label fw-semibold text-muted small">Follow-up Type</label>
-                <select name="followup_type" class="form-select" required>
-                    <option value="Email">Email</option>
-                    <option value="LinkedIn Message">LinkedIn Message</option>
-                    <option value="Phone Call">Phone Call</option>
-                    <option value="WhatsApp">WhatsApp</option>
-                    <option value="Other">Other</option>
-                </select>
-            </div>
-            <div class="mb-3">
-                <label class="form-label fw-semibold text-muted small">Response / Outcome</label>
-                <select name="response" class="form-select" required>
-                    <option value="Waiting">Waiting</option>
-                    <option value="No Reply">No Reply</option>
-                    <option value="Replied">Replied</option>
-                    <option value="Interview Scheduled">Interview Scheduled</option>
-                    <option value="Rejected">Rejected</option>
-                    <option value="Offer Received">Offer Received</option>
-                </select>
-            </div>
-            <div class="mb-3">
-                <label class="form-label fw-semibold text-muted small">Next Follow-up Date (Optional)</label>
-                <input type="date" class="form-control" name="next_followup_date" id="next_followup_date">
-            </div>
-            <div class="mb-3">
-                <label class="form-label fw-semibold text-muted small">Notes</label>
-                <textarea class="form-control" name="notes" rows="3" placeholder="Any details from the interaction..."></textarea>
-            </div>
-          </div>
-          <div class="modal-footer border-top-0">
-            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-primary">Save Follow-up</button>
-          </div>
-      </form>
+            <form action="/applications/{{ application.id }}/followup" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-muted small">Follow-up Date</label>
+                        <input type="date" class="form-control" name="followup_date" id="followup_date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-muted small">Follow-up Type</label>
+                        <select name="followup_type" class="form-select" required>
+                            <option value="Email">Email</option>
+                            <option value="LinkedIn Message">LinkedIn Message</option>
+                            <option value="Phone Call">Phone Call</option>
+                            <option value="WhatsApp">WhatsApp</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-muted small">Response / Outcome</label>
+                        <select name="response" class="form-select" required>
+                            <option value="Waiting">Waiting</option>
+                            <option value="No Reply">No Reply</option>
+                            <option value="Replied">Replied</option>
+                            <option value="Interview Scheduled">Interview Scheduled</option>
+                            <option value="Rejected">Rejected</option>
+                            <option value="Offer Received">Offer Received</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-muted small">Next Follow-up Date (Optional)</label>
+                        <input type="date" class="form-control" name="next_followup_date" id="next_followup_date">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-muted small">Notes</label>
+                        <textarea class="form-control" name="notes" rows="3"
+                            placeholder="Any details from the interaction..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Follow-up</button>
+                </div>
+            </form>
+        </div>
     </div>
-  </div>
 </div>
 
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-    // Auto-fill dates in the modal
-    const today = new Date();
-    const formattedToday = today.toISOString().split('T')[0];
-    document.getElementById('followup_date').value = formattedToday;
-    
-    const nextDate = new Date();
-    nextDate.setDate(nextDate.getDate() + 2);
-    document.getElementById('next_followup_date').value = nextDate.toISOString().split('T')[0];
-});
+    document.addEventListener("DOMContentLoaded", function () {
+        const today = new Date();
+        const formattedToday = today.toISOString().split('T')[0];
+
+        // Auto-fill dates in the follow-up modal
+        document.getElementById('followup_date').value = formattedToday;
+
+        const nextDate = new Date();
+        nextDate.setDate(nextDate.getDate() + 2);
+        const formattedNext = nextDate.toISOString().split('T')[0];
+        document.getElementById('next_followup_date').value = formattedNext;
+
+        // Auto-fill next follow-up date in the email modal
+        const emailNext = document.getElementById('email_next_followup_date');
+        if (emailNext) {
+            emailNext.value = formattedNext;
+        }
+
+        // ---- Attachment mutual-exclusion logic ----
+        const existingSelect = document.getElementById('existing_resume_id');
+        const newFileInput   = document.getElementById('new_resume_file');
+        const validationMsg  = document.getElementById('uploadValidationMsg');
+
+        const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+        const ALLOWED_EXT = ['.pdf', '.doc', '.docx'];
+
+        if (existingSelect && newFileInput) {
+            // When user picks an existing resume → disable the file upload
+            existingSelect.addEventListener('change', function () {
+                if (this.value) {
+                    newFileInput.value = '';
+                    newFileInput.disabled = true;
+                    validationMsg.classList.add('d-none');
+                } else {
+                    newFileInput.disabled = false;
+                }
+            });
+
+            // When user picks a new file → disable the dropdown + validate
+            newFileInput.addEventListener('change', function () {
+                validationMsg.classList.add('d-none');
+                validationMsg.textContent = '';
+
+                if (this.files.length > 0) {
+                    const file = this.files[0];
+                    const ext  = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+
+                    if (!ALLOWED_EXT.includes(ext)) {
+                        validationMsg.textContent = 'Only PDF, DOC, and DOCX files are allowed.';
+                        validationMsg.classList.remove('d-none');
+                        this.value = '';
+                        existingSelect.disabled = false;
+                        return;
+                    }
+
+                    if (file.size > MAX_BYTES) {
+                        validationMsg.textContent = 'File is too large. Maximum size is 10 MB.';
+                        validationMsg.classList.remove('d-none');
+                        this.value = '';
+                        existingSelect.disabled = false;
+                        return;
+                    }
+
+                    // Valid file chosen — lock the dropdown
+                    existingSelect.value    = '';
+                    existingSelect.disabled = true;
+                } else {
+                    existingSelect.disabled = false;
+                }
+            });
+        }
+
+        // Spinner + disable on email form submit (prevents double-click)
+        const emailForm = document.getElementById('emailForm');
+        if (emailForm) {
+            emailForm.addEventListener('submit', function (e) {
+                // Re-enable disabled fields so they are included in the POST
+                if (existingSelect) existingSelect.disabled = false;
+                if (newFileInput)   newFileInput.disabled   = false;
+
+                const btn     = document.getElementById('sendEmailBtn');
+                const txt     = document.getElementById('sendBtnText');
+                const spinner = document.getElementById('sendBtnSpinner');
+                btn.disabled  = true;
+                txt.textContent = 'Sending…';
+                spinner.classList.remove('d-none');
+            });
+        }
+    });
 </script>
 {% endblock %}

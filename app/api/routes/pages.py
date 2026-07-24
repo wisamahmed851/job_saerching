@@ -1,5 +1,5 @@
 from datetime import date, timedelta
-from fastapi import APIRouter, Request, Depends, Form, Query, HTTPException
+from fastapi import APIRouter, Request, Depends, Form, Query, HTTPException, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -7,7 +7,7 @@ from pydantic import ValidationError
 import sys
 
 from app.api.deps import get_db, get_current_user_web
-from app.crud.user import get_user_by_email
+from app.crud.user import get_user_by_email, get_user_by_username, create_user as crud_create_user
 from app.core.security import verify_password, create_access_token
 from app.core.config import settings
 from app.models.user import User
@@ -23,9 +23,24 @@ from app.crud.application import (
     update_job_application
 )
 from app.crud.followup import create_followup
+from app.crud.resume import get_active_resumes_for_user, get_resume_by_id, create_resume
 from app.schemas.application import ApplicationCreate, FollowupCreate
+from app.schemas.user import UserCreate
 from app.models.application import ApplicationStatus
 from app.models.followup import FollowupType, FollowupResponse
+from app.services.email_service import (
+    send_email,
+    EmailAuthError,
+    EmailConnectionError,
+    EmailConfigError,
+    EmailSendError,
+)
+from app.services.resume_service import (
+    validate_resume_file,
+    generate_stored_filename,
+    save_resume_file,
+    ResumeValidationError,
+)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -69,6 +84,54 @@ def login_post(
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
     )
     return response
+
+@router.get("/register", response_class=HTMLResponse)
+def register_page(request: Request):
+    return templates.TemplateResponse("register.html", {"request": request})
+
+@router.post("/register", response_class=HTMLResponse)
+def register_post(
+    request: Request,
+    username: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    confirm_password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    errors = {}
+
+    # --- Validation ---
+    if len(username.strip()) < 3:
+        errors["username"] = "Username must be at least 3 characters."
+
+    if len(password) < 8:
+        errors["password"] = "Password must be at least 8 characters."
+
+    if password != confirm_password:
+        errors["confirm_password"] = "Passwords do not match."
+
+    if not errors:
+        if get_user_by_email(db, email=email):
+            errors["email"] = "An account with this email already exists."
+
+        if get_user_by_username(db, username=username.strip()):
+            errors["username"] = "This username is already taken."
+
+    if errors:
+        return templates.TemplateResponse(
+            "register.html",
+            {
+                "request": request,
+                "errors": errors,
+                "username": username,
+                "email": email,
+            },
+            status_code=400,
+        )
+
+    crud_create_user(db, UserCreate(username=username.strip(), email=email, password=password))
+    return RedirectResponse(url="/login?registered=1", status_code=302)
+
 
 @router.post("/logout", response_class=HTMLResponse)
 def logout_post():
@@ -167,11 +230,13 @@ def list_applications_page(
 @router.get("/applications/new", response_class=HTMLResponse)
 def new_application_page(
     request: Request,
-    current_user: User = Depends(get_current_user_web)
+    current_user: User = Depends(get_current_user_web),
+    db: Session = Depends(get_db)
 ):
+    resumes = get_active_resumes_for_user(db, user_id=current_user.id)
     return templates.TemplateResponse(
         "application_form.html",
-        {"request": request, "user": current_user}
+        {"request": request, "user": current_user, "resumes": resumes}
     )
 
 @router.post("/applications/new", response_class=HTMLResponse)
@@ -185,7 +250,7 @@ def create_application_post(
     company_website: str | None = Form(None),
     company_email: str | None = Form(None),
     job_post_url: str | None = Form(None),
-    resume_version: str | None = Form(None),
+    resume_id: int | None = Form(None),
     notes: str | None = Form(None),
     current_user: User = Depends(get_current_user_web),
     db: Session = Depends(get_db)
@@ -200,15 +265,17 @@ def create_application_post(
             application_method=application_method,
             job_post_url=job_post_url,
             applied_date=applied_date,
-            resume_version=resume_version,
+            resume_id=resume_id,
             notes=notes
         )
     except ValidationError:
+        resumes = get_active_resumes_for_user(db, user_id=current_user.id)
         return templates.TemplateResponse(
             "application_form.html",
             {
                 "request": request, 
-                "user": current_user, 
+                "user": current_user,
+                "resumes": resumes,
                 "error": "Invalid form data provided. Please check your inputs."
             },
             status_code=400
@@ -229,15 +296,18 @@ def view_application_page(
     application = get_application_by_id(db, current_user.id, application_id)
     if not application:
         raise HTTPException(status_code=404, detail="Application not found")
-        
+
+    resumes = get_active_resumes_for_user(db, user_id=current_user.id)
+
     return templates.TemplateResponse(
         "application_detail.html",
         {
             "request": request, 
             "user": current_user, 
             "application": application,
+            "resumes": resumes,
             "success": success,
-            "error": error
+            "error": error,
         }
     )
 
@@ -251,10 +321,11 @@ def edit_application_page(
     application = get_application_by_id(db, current_user.id, application_id)
     if not application:
         raise HTTPException(status_code=404, detail="Application not found")
-        
+
+    resumes = get_active_resumes_for_user(db, user_id=current_user.id)
     return templates.TemplateResponse(
         "application_form.html",
-        {"request": request, "user": current_user, "application": application}
+        {"request": request, "user": current_user, "application": application, "resumes": resumes}
     )
 
 @router.post("/applications/{application_id}/edit", response_class=HTMLResponse)
@@ -270,7 +341,7 @@ def edit_application_post(
     company_website: str | None = Form(None),
     company_email: str | None = Form(None),
     job_post_url: str | None = Form(None),
-    resume_version: str | None = Form(None),
+    resume_id: int | None = Form(None),
     notes: str | None = Form(None),
     next_followup_date: date | None = Form(None),
     current_user: User = Depends(get_current_user_web),
@@ -286,19 +357,21 @@ def edit_application_post(
             application_method=application_method,
             job_post_url=job_post_url,
             applied_date=applied_date,
-            resume_version=resume_version,
+            resume_id=resume_id,
             notes=notes,
             status=status,
             next_followup_date=next_followup_date
         )
     except ValidationError:
         application = get_application_by_id(db, current_user.id, application_id)
+        resumes = get_active_resumes_for_user(db, user_id=current_user.id)
         return templates.TemplateResponse(
             "application_form.html",
             {
                 "request": request, 
                 "user": current_user, 
                 "application": application,
+                "resumes": resumes,
                 "error": "Invalid form data provided. Please check your inputs."
             },
             status_code=400
@@ -347,3 +420,157 @@ def add_followup_post(
         raise HTTPException(status_code=404, detail="Application not found")
         
     return RedirectResponse(url=f"/applications/{application_id}?success=Follow-up+Added+Successfully", status_code=302)
+
+
+@router.post("/applications/{application_id}/send-email", response_class=HTMLResponse)
+async def send_followup_email(
+    application_id: int,
+    subject: str = Form(...),
+    body: str = Form(...),
+    next_followup_date: date | None = Form(None),
+    existing_resume_id: int | None = Form(None),
+    new_resume_file: UploadFile | None = File(None),
+    current_user: User = Depends(get_current_user_web),
+    db: Session = Depends(get_db)
+):
+    """
+    Sends a follow-up email to the company, with an optional resume attachment.
+    Attachment source priority:
+      1. new_resume_file  — uploaded inline, saved to the Resume Library, then attached
+      2. existing_resume_id — picked from the user's Resume Library
+      3. neither           — no attachment
+    Ownership of the application is always verified.
+    """
+    # 1. Load and verify ownership
+    application = get_application_by_id(db, current_user.id, application_id)
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+
+    # 2. Verify company email exists
+    if not application.company.email:
+        return RedirectResponse(
+            url=f"/applications/{application_id}?error=No+company+email+address+on+file",
+            status_code=302
+        )
+
+    # 3. Resolve attachment (path on disk + display filename)
+    attachment_path: str | None = None
+    attachment_filename: str | None = None
+    attachment_label: str | None = None   # used in timeline note
+
+    # Check if a real file was actually uploaded (not just an empty file input)
+    has_new_file = (
+        new_resume_file is not None
+        and new_resume_file.filename
+        and new_resume_file.filename.strip() != ""
+    )
+
+    if has_new_file:
+        # --- Case A: new upload — reuse Resume service & CRUD (same as CV Library page) ---
+        file_bytes = await new_resume_file.read()
+        original_filename = new_resume_file.filename
+        content_type = new_resume_file.content_type or ""
+
+        try:
+            validate_resume_file(
+                filename=original_filename,
+                content_type=content_type,
+                file_size=len(file_bytes),
+            )
+        except ResumeValidationError as exc:
+            return RedirectResponse(
+                url=f"/applications/{application_id}?error={str(exc).replace(' ', '+')}",
+                status_code=302
+            )
+
+        stored_filename = generate_stored_filename(original_filename)
+        saved_path = save_resume_file(
+            user_id=current_user.id,
+            stored_filename=stored_filename,
+            file_bytes=file_bytes,
+        )
+
+        # Persist to Resume Library so it appears in CV Management
+        resume_record = create_resume(
+            db=db,
+            user_id=current_user.id,
+            display_name=original_filename.rsplit(".", 1)[0],  # strip extension for display name
+            original_filename=original_filename,
+            stored_filename=stored_filename,
+            file_path=str(saved_path),
+            file_size=len(file_bytes),
+            mime_type=content_type,
+        )
+
+        attachment_path = resume_record.file_path
+        attachment_filename = resume_record.original_filename
+        attachment_label = resume_record.original_filename
+
+    elif existing_resume_id:
+        # --- Case B: existing resume from library ---
+        resume_record = get_resume_by_id(db, user_id=current_user.id, resume_id=existing_resume_id)
+        if not resume_record:
+            return RedirectResponse(
+                url=f"/applications/{application_id}?error=Selected+resume+not+found",
+                status_code=302
+            )
+        attachment_path = resume_record.file_path
+        attachment_filename = resume_record.original_filename
+        attachment_label = resume_record.original_filename
+
+    # 4. Send the email
+    try:
+        send_email(
+            to_email=application.company.email,
+            subject=subject,
+            body=body,
+            attachment_path=attachment_path,
+            attachment_filename=attachment_filename,
+        )
+    except EmailConfigError:
+        return RedirectResponse(
+            url=f"/applications/{application_id}?error=Email+not+configured.+Please+set+SMTP+settings+in+.env",
+            status_code=302
+        )
+    except EmailAuthError:
+        return RedirectResponse(
+            url=f"/applications/{application_id}?error=Could+not+send+email.+Please+verify+SMTP+configuration.",
+            status_code=302
+        )
+    except EmailConnectionError:
+        return RedirectResponse(
+            url=f"/applications/{application_id}?error=Unable+to+connect+to+mail+server.",
+            status_code=302
+        )
+    except EmailSendError:
+        return RedirectResponse(
+            url=f"/applications/{application_id}?error=Email+sending+failed.+Please+try+again.",
+            status_code=302
+        )
+
+    # 5. Auto-log the email as a follow-up timeline entry
+    from datetime import date as date_type
+    today = date_type.today()
+
+    if attachment_label:
+        timeline_note = f"Email follow-up sent with attachment: {attachment_label}"
+    else:
+        timeline_note = "Email follow-up sent through built-in email system."
+
+    create_followup(
+        db=db,
+        user_id=current_user.id,
+        application_id=application_id,
+        form_data=FollowupCreate(
+            followup_date=today,
+            followup_type=FollowupType.EMAIL,
+            response=FollowupResponse.WAITING,
+            notes=timeline_note,
+            next_followup_date=next_followup_date,
+        )
+    )
+
+    return RedirectResponse(
+        url=f"/applications/{application_id}?success=Email+sent+successfully",
+        status_code=302
+    )

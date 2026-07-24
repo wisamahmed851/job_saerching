@@ -35,11 +35,11 @@
                         </div>
                         <div class="col-md-6">
                             <label for="company_website" class="form-label text-muted fw-semibold">Company Website</label>
-                            <input type="url" class="form-control bg-light border-0" id="company_website" name="company_website" placeholder="https://..." value="{{ application.company.website if application else '' }}">
+                            <input type="text" class="form-control bg-light border-0" id="company_website" name="company_website" placeholder="https://..." value="{{ application.company.website if application else '' }}">
                         </div>
                         <div class="col-md-6">
                             <label for="company_email" class="form-label text-muted fw-semibold">Contact Email</label>
-                            <input type="email" class="form-control bg-light border-0" id="company_email" name="company_email" placeholder="hr@acme.com" value="{{ application.company.email if application else '' }}">
+                            <input type="text" class="form-control bg-light border-0" id="company_email" name="company_email" placeholder="hr@acme.com" value="{{ application.company.email if application else '' }}">
                         </div>
                     </div>
 
@@ -64,12 +64,25 @@
                             <input type="date" class="form-control bg-light border-0" id="applied_date" name="applied_date" required value="{{ application.applied_date.strftime('%Y-%m-%d') if application else '' }}">
                         </div>
                         <div class="col-md-6">
-                            <label for="resume_version" class="form-label text-muted fw-semibold">Resume Version</label>
-                            <input type="text" class="form-control bg-light border-0" id="resume_version" name="resume_version" placeholder="e.g. v2_Backend" value="{{ application.resume_version if application else '' }}">
+                            <label for="resume_id" class="form-label text-muted fw-semibold">Resume / CV</label>
+                            <select class="form-select bg-light border-0" id="resume_id" name="resume_id">
+                                <option value="">-- None --</option>
+                                {% for resume in resumes %}
+                                <option value="{{ resume.id }}"
+                                    {% if application and application.resume_id == resume.id %}selected{% endif %}>
+                                    {{ resume.display_name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            {% if not resumes %}
+                            <div class="form-text text-muted">
+                                No CVs uploaded yet. <a href="/resumes">Upload one in CV Library.</a>
+                            </div>
+                            {% endif %}
                         </div>
                         <div class="col-md-12">
                             <label for="job_post_url" class="form-label text-muted fw-semibold">Job Posting URL</label>
-                            <input type="url" class="form-control bg-light border-0" id="job_post_url" name="job_post_url" placeholder="https://..." value="{{ application.job_post_url if application else '' }}">
+                            <input type="text" class="form-control bg-light border-0" id="job_post_url" name="job_post_url" placeholder="https://..." value="{{ application.job_post_url if application else '' }}">
                         </div>
                         
                         <!-- ONLY DISPLAY ON EDIT -->

@@ -16,7 +16,7 @@ class ApplicationCreate(BaseModel):
     applied_date: date
     next_followup_date: date | None = None
     status: ApplicationStatus | None = None
-    resume_version: str | None = None
+    resume_id: int | None = None   # replaces resume_version string field
     notes: str | None = None
 
 from app.models.followup import FollowupType, FollowupResponse

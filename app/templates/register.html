@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Register - Job Application Tracker{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center mt-5">
+    <div class="col-md-6 col-lg-5">
+        <div class="card shadow-lg border-0 rounded-4">
+            <div class="card-body p-4 p-md-5">
+                <div class="text-center mb-4">
+                    <h2 class="fw-bold">Create an Account</h2>
+                    <p class="text-muted">Start tracking your job search today.</p>
+                </div>
+
+                <form action="/register" method="post" novalidate>
+
+                    <!-- Username -->
+                    <div class="mb-3">
+                        <label for="username" class="form-label fw-semibold">Username</label>
+                        <input
+                            type="text"
+                            class="form-control form-control-lg bg-light {% if errors and errors.username %}is-invalid{% endif %}"
+                            id="username"
+                            name="username"
+                            required
+                            autofocus
+                            placeholder="johndoe"
+                            value="{{ username | default('') }}"
+                        >
+                        {% if errors and errors.username %}
+                        <div class="invalid-feedback">{{ errors.username }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Email -->
+                    <div class="mb-3">
+                        <label for="email" class="form-label fw-semibold">Email address</label>
+                        <input
+                            type="email"
+                            class="form-control form-control-lg bg-light {% if errors and errors.email %}is-invalid{% endif %}"
+                            id="email"
+                            name="email"
+                            required
+                            placeholder="name@example.com"
+                            value="{{ email | default('') }}"
+                        >
+                        {% if errors and errors.email %}
+                        <div class="invalid-feedback">{{ errors.email }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Password -->
+                    <div class="mb-3">
+                        <label for="password" class="form-label fw-semibold">Password</label>
+                        <input
+                            type="password"
+                            class="form-control form-control-lg bg-light {% if errors and errors.password %}is-invalid{% endif %}"
+                            id="password"
+                            name="password"
+                            required
+                            placeholder="Min. 8 characters"
+                        >
+                        {% if errors and errors.password %}
+                        <div class="invalid-feedback">{{ errors.password }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Confirm Password -->
+                    <div class="mb-4">
+                        <label for="confirm_password" class="form-label fw-semibold">Confirm Password</label>
+                        <input
+                            type="password"
+                            class="form-control form-control-lg bg-light {% if errors and errors.confirm_password %}is-invalid{% endif %}"
+                            id="confirm_password"
+                            name="confirm_password"
+                            required
+                            placeholder="••••••••"
+                        >
+                        {% if errors and errors.confirm_password %}
+                        <div class="invalid-feedback">{{ errors.confirm_password }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-dark btn-lg">
+                            Create Account
+                        </button>
+                    </div>
+
+                </form>
+
+                <hr class="my-4">
+
+                <p class="text-center text-muted mb-0">
+                    Already have an account?
+                    <a href="/login" class="text-dark fw-semibold">Sign in</a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

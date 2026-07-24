@@ -7,6 +7,10 @@ def get_user_by_email(db: Session, email: str) -> User | None:
     """Fetches a user from the database by email."""
     return db.query(User).filter(User.email == email).first()
 
+def get_user_by_username(db: Session, username: str) -> User | None:
+    """Fetches a user from the database by username."""
+    return db.query(User).filter(User.username == username).first()
+
 def create_user(db: Session, user: UserCreate) -> User:
     """Hashes the user's password and creates a new user in the database."""
     hashed_password = get_password_hash(user.password)
