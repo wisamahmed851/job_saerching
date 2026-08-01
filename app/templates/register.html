@@ -14,9 +14,9 @@
 
                 <form action="/register" method="post" novalidate>
 
-                    <!-- Username -->
+                    <!-- Full Name -->
                     <div class="mb-3">
-                        <label for="username" class="form-label fw-semibold">Username</label>
+                        <label for="username" class="form-label fw-semibold">Full Name</label>
                         <input
                             type="text"
                             class="form-control form-control-lg bg-light {% if errors and errors.username %}is-invalid{% endif %}"
@@ -24,7 +24,7 @@
                             name="username"
                             required
                             autofocus
-                            placeholder="johndoe"
+                            placeholder="e.g. John Doe"
                             value="{{ username | default('') }}"
                         >
                         {% if errors and errors.username %}
@@ -34,7 +34,7 @@
 
                     <!-- Email -->
                     <div class="mb-3">
-                        <label for="email" class="form-label fw-semibold">Email address</label>
+                        <label for="email" class="form-label fw-semibold">Email Address</label>
                         <input
                             type="email"
                             class="form-control form-control-lg bg-light {% if errors and errors.email %}is-invalid{% endif %}"
@@ -83,7 +83,7 @@
 
                     <div class="d-grid">
                         <button type="submit" class="btn btn-dark btn-lg">
-                            Create Account
+                            Next →
                         </button>
                     </div>
 

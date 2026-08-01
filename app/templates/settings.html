@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Job Tracker{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col">
+        <h2 class="fw-bold mb-0">Settings</h2>
+        <p class="text-muted mb-0">Manage your account preferences</p>
+    </div>
+</div>
+
+{% if success %}
+<div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+    {{ success }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+{% if error %}
+<div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+    <strong>Error:</strong> {{ error }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+<!-- Tabs -->
+<ul class="nav nav-tabs mb-4" id="settingsTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link {% if active_tab != 'email-template' %}active{% endif %}"
+                id="email-config-tab"
+                data-bs-toggle="tab" data-bs-target="#email-config"
+                type="button" role="tab"
+                aria-controls="email-config"
+                aria-selected="{{ 'true' if active_tab != 'email-template' else 'false' }}">
+            Email Configuration
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link {% if active_tab == 'email-template' %}active{% endif %}"
+                id="email-template-tab"
+                data-bs-toggle="tab" data-bs-target="#email-template"
+                type="button" role="tab"
+                aria-controls="email-template"
+                aria-selected="{{ 'true' if active_tab == 'email-template' else 'false' }}">
+            Email Template
+        </button>
+    </li>
+</ul>
+
+<!-- Tab content -->
+<div class="tab-content" id="settingsTabContent">
+
+    <!-- ── Tab 1: Email Configuration ── -->
+    <div class="tab-pane fade {% if active_tab != 'email-template' %}show active{% endif %}"
+         id="email-config" role="tabpanel">
+        <div class="row justify-content-start">
+            <div class="col-lg-7">
+                <div class="card shadow-sm border-0 rounded-4">
+                    <div class="card-header bg-white py-3 border-bottom rounded-top-4">
+                        <h5 class="mb-0 fw-bold">Email Configuration</h5>
+                        <small class="text-muted">
+                            These credentials are used when sending follow-up emails.
+                            The SMTP server (<strong>{{ smtp_host }}</strong>, port {{ smtp_port }}) is fixed and managed by the administrator.
+                        </small>
+                    </div>
+                    <div class="card-body p-4">
+                        <form action="/settings" method="post" novalidate>
+
+                            <div class="mb-3">
+                                <label for="smtp_username" class="form-label fw-semibold">
+                                    SMTP Username <span class="text-danger">*</span>
+                                </label>
+                                <input type="text"
+                                       class="form-control bg-light border-0 {% if errors and errors.smtp_username %}is-invalid{% endif %}"
+                                       id="smtp_username" name="smtp_username"
+                                       placeholder="your@gmail.com"
+                                       value="{{ config.smtp_username if config else '' }}">
+                                {% if errors and errors.smtp_username %}
+                                <div class="invalid-feedback">{{ errors.smtp_username }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="smtp_password" class="form-label fw-semibold">SMTP Password</label>
+                                <input type="password"
+                                       class="form-control bg-light border-0 {% if errors and errors.smtp_password %}is-invalid{% endif %}"
+                                       id="smtp_password" name="smtp_password"
+                                       placeholder="{% if config %}Leave blank to keep existing password{% else %}Required for new configuration{% endif %}">
+                                {% if errors and errors.smtp_password %}
+                                <div class="invalid-feedback">{{ errors.smtp_password }}</div>
+                                {% endif %}
+                                {% if config %}
+                                <div class="form-text text-muted">Leave blank to keep your existing password.</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="smtp_from_name" class="form-label fw-semibold">
+                                    From Name <span class="text-danger">*</span>
+                                </label>
+                                <input type="text"
+                                       class="form-control bg-light border-0 {% if errors and errors.smtp_from_name %}is-invalid{% endif %}"
+                                       id="smtp_from_name" name="smtp_from_name"
+                                       placeholder="e.g. John Doe"
+                                       value="{{ config.smtp_from_name if config else user.username | title }}">
+                                {% if errors and errors.smtp_from_name %}
+                                <div class="invalid-feedback">{{ errors.smtp_from_name }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="smtp_from_email" class="form-label fw-semibold">
+                                    From Email <span class="text-danger">*</span>
+                                </label>
+                                <input type="email"
+                                       class="form-control bg-light border-0 {% if errors and errors.smtp_from_email %}is-invalid{% endif %}"
+                                       id="smtp_from_email" name="smtp_from_email"
+                                       placeholder="your@gmail.com"
+                                       value="{{ config.smtp_from_email if config else '' }}">
+                                {% if errors and errors.smtp_from_email %}
+                                <div class="invalid-feedback">{{ errors.smtp_from_email }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="d-flex justify-content-end">
+                                <button type="submit" class="btn btn-primary px-5">Save Configuration</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Tab 2: Email Template ── -->
+    <div class="tab-pane fade {% if active_tab == 'email-template' %}show active{% endif %}"
+         id="email-template" role="tabpanel">
+        <div class="row justify-content-start">
+            <div class="col-lg-8">
+
+                <!-- Available Variables card -->
+                <div class="card shadow-sm border-0 rounded-4 mb-4">
+                    <div class="card-header bg-white py-3 border-bottom rounded-top-4">
+                        <h6 class="mb-0 fw-bold">Available Placeholders</h6>
+                    </div>
+                    <div class="card-body p-3 d-flex flex-wrap gap-2 align-items-center">
+                        <span class="badge bg-light text-dark border font-monospace">&#123;&#123; company_name &#125;&#125;</span>
+                        <span class="text-muted small me-3">Company Name</span>
+                        <span class="badge bg-light text-dark border font-monospace">&#123;&#123; position &#125;&#125;</span>
+                        <span class="text-muted small me-3">Applied Position</span>
+                        <span class="badge bg-light text-dark border font-monospace">&#123;&#123; user_name &#125;&#125;</span>
+                        <span class="text-muted small">Current User Name</span>
+                    </div>
+                </div>
+
+                <!-- Template editor card -->
+                <div class="card shadow-sm border-0 rounded-4">
+                    <div class="card-header bg-white py-3 border-bottom rounded-top-4 d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-0 fw-bold">Email Template</h5>
+                            <small class="text-muted">
+                                {% if email_template %}
+                                    Using your custom template.
+                                {% else %}
+                                    Using the built-in default template.
+                                {% endif %}
+                            </small>
+                        </div>
+                        {% if email_template %}
+                        <form action="/settings/template/reset" method="post" class="mb-0"
+                              onsubmit="return confirm('Reset to the built-in default template?');">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                Reset to Default
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                    <div class="card-body p-4">
+                        <form action="/settings/template" method="post" novalidate>
+
+                            <!-- Subject -->
+                            <div class="mb-3">
+                                <label for="subject_template" class="form-label fw-semibold">
+                                    Subject <span class="text-danger">*</span>
+                                </label>
+                                <input type="text"
+                                       class="form-control bg-light border-0 {% if template_errors and template_errors.subject_template %}is-invalid{% endif %}"
+                                       id="subject_template"
+                                       name="subject_template"
+                                       value="{{ submitted_subject if submitted_subject is defined else (email_template.subject_template if email_template else default_subject) }}">
+                                {% if template_errors and template_errors.subject_template %}
+                                <div class="invalid-feedback">{{ template_errors.subject_template }}</div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Body -->
+                            <div class="mb-4">
+                                <label for="body_template" class="form-label fw-semibold">
+                                    Body <span class="text-danger">*</span>
+                                </label>
+                                <textarea
+                                    class="form-control bg-light border-0 font-monospace {% if template_errors and template_errors.body_template %}is-invalid{% endif %}"
+                                    id="body_template"
+                                    name="body_template"
+                                    rows="12">{{ submitted_body if submitted_body is defined else (email_template.body_template if email_template else default_body) }}</textarea>
+                                {% if template_errors and template_errors.body_template %}
+                                <div class="invalid-feedback">{{ template_errors.body_template }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="d-flex justify-content-end">
+                                <button type="submit" class="btn btn-primary px-5">Save Template</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

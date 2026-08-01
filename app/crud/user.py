@@ -11,9 +11,13 @@ def get_user_by_username(db: Session, username: str) -> User | None:
     """Fetches a user from the database by username."""
     return db.query(User).filter(User.username == username).first()
 
-def create_user(db: Session, user: UserCreate) -> User:
-    """Hashes the user's password and creates a new user in the database."""
-    hashed_password = get_password_hash(user.password)
+def create_user(db: Session, user: UserCreate, prehashed: bool = False) -> User:
+    """
+    Creates a new user in the database.
+    If prehashed=True the password field already contains the bcrypt hash
+    and must not be hashed again (used by the two-step registration flow).
+    """
+    hashed_password = user.password if prehashed else get_password_hash(user.password)
     
     db_user = User(
         username=user.username,

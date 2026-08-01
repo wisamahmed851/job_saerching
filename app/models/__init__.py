@@ -4,3 +4,6 @@ from app.models.company import Company
 from app.models.application import JobApplication
 from app.models.followup import ApplicationFollowUp
 from app.models.resume import Resume
+from app.models.developer_feedback import DeveloperFeedback
+from app.models.user_email_config import UserEmailConfig
+from app.models.email_template import EmailTemplate

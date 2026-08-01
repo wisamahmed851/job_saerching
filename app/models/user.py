@@ -34,3 +34,6 @@ class User(Base):
     companies: Mapped[List["Company"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     applications: Mapped[List["JobApplication"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     resumes: Mapped[List["Resume"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    feedback: Mapped[List["DeveloperFeedback"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    email_config: Mapped["UserEmailConfig | None"] = relationship(back_populates="user", uselist=False, cascade="all, delete-orphan")
+    email_template: Mapped["EmailTemplate | None"] = relationship(back_populates="user", uselist=False, cascade="all, delete-orphan")
