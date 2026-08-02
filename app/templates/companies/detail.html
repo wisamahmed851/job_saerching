@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}{{ company.name }} - Job Tracker{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold mb-1">{{ company.name }}</h2>
+        <p class="text-muted mb-0">Company Details</p>
+    </div>
+    <div class="col-md-4 text-md-end mt-3 mt-md-0">
+        <a href="/companies" class="btn btn-outline-secondary me-2">Back to Companies</a>
+        <a href="/companies/{{ company.id }}/edit" class="btn btn-primary">Edit Company</a>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+    {{ error }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+<div class="row">
+    <!-- Company Info Card -->
+    <div class="col-lg-4 mb-4">
+        <div class="card shadow-sm border-0 rounded-4 h-100">
+            <div class="card-header bg-white py-3 border-bottom-0 rounded-top-4">
+                <h5 class="mb-0 fw-bold">Company Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <small class="text-muted d-block fw-semibold mb-1">Rating</small>
+                    {% if company.rating.value == 'GOOD' %}
+                    <span class="badge bg-success fs-6">Good</span>
+                    {% elif company.rating.value == 'AVERAGE' %}
+                    <span class="badge bg-warning text-dark fs-6">Average</span>
+                    {% else %}
+                    <span class="badge bg-danger fs-6">Below Average</span>
+                    {% endif %}
+                </div>
+                <div class="mb-4">
+                    <small class="text-muted d-block fw-semibold mb-1">Website</small>
+                    {% if company.website %}
+                    <a href="{{ company.website }}" target="_blank">{{ company.website }}</a>
+                    {% else %}
+                    <span class="text-muted">Not provided</span>
+                    {% endif %}
+                </div>
+                <div class="mb-4">
+                    <small class="text-muted d-block fw-semibold mb-1">Contact Email</small>
+                    {% if company.email %}
+                    <a href="mailto:{{ company.email }}">{{ company.email }}</a>
+                    {% else %}
+                    <span class="text-muted">Not provided</span>
+                    {% endif %}
+                </div>
+                <div class="mb-4">
+                    <small class="text-muted d-block fw-semibold mb-1">Total Applications</small>
+                    <span class="fw-bold fs-5">{{ company.applications | length }}</span>
+                </div>
+            </div>
+            <div class="card-footer bg-white border-top-0 rounded-bottom-4 pt-0 pb-4 text-center">
+                {% if company.applications | length == 0 %}
+                <form action="/companies/{{ company.id }}/delete" method="POST"
+                      onsubmit="return confirm('Delete {{ company.name }}? This cannot be undone.');">
+                    <button type="submit" class="btn btn-outline-danger w-100">Delete Company</button>
+                </form>
+                {% else %}
+                <button class="btn btn-outline-danger w-100" disabled title="Cannot delete: applications are linked">
+                    Delete Company
+                </button>
+                <small class="text-muted d-block mt-2">
+                    Cannot delete — {{ company.applications | length }} application(s) linked.
+                </small>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Applications List -->
+    <div class="col-lg-8 mb-4">
+        <div class="card shadow-sm border-0 rounded-4">
+            <div class="card-header bg-white py-3 border-bottom-0 rounded-top-4">
+                <h5 class="mb-0 fw-bold">Applications ({{ company.applications | length }})</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="py-3 px-4">Position</th>
+                                <th class="py-3">Applied</th>
+                                <th class="py-3">Status</th>
+                                <th class="py-3 px-4 text-end">Link</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for app in company.applications | sort(attribute='applied_date', reverse=True) %}
+                            <tr>
+                                <td class="px-4 fw-semibold">{{ app.position }}</td>
+                                <td>{{ app.applied_date.strftime('%b %d, %Y') }}</td>
+                                <td>
+                                    {% if app.status.value == 'ACTIVE' %}
+                                    <span class="badge bg-success">ACTIVE</span>
+                                    {% elif app.status.value == 'OFFER' %}
+                                    <span class="badge bg-primary">OFFER</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ app.status.value }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 text-end">
+                                    <a href="/applications/{{ app.id }}" class="btn btn-sm btn-outline-primary">View</a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center py-4 text-muted">No applications yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

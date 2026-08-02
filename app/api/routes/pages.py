@@ -55,6 +55,7 @@ from app.services.resume_service import (
     save_resume_file,
     ResumeValidationError,
 )
+from app.services.application_status_service import update_ghosted_applications
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -249,6 +250,9 @@ def dashboard_page(
     from fastapi.responses import PlainTextResponse
     
     try:
+        # Auto-ghost qualifying applications before reading any data
+        update_ghosted_applications(db)
+
         due_followups = get_due_followups(db, current_user.id)
         recent_applications = get_recent_applications(db, current_user.id)
         stats = get_application_stats(db, current_user.id)
@@ -291,6 +295,9 @@ def list_applications_page(
     current_user: User = Depends(get_current_user_web),
     db: Session = Depends(get_db)
 ):
+    # Auto-ghost qualifying applications before rendering the list
+    update_ghosted_applications(db)
+
     applications = get_applications(
         db=db,
         user_id=current_user.id,
@@ -346,18 +353,21 @@ def create_application_post(
     company_id: int | None = Form(None), 
     company_website: str | None = Form(None),
     company_email: str | None = Form(None),
+    company_rating: str = Form("AVERAGE"),
     job_post_url: str | None = Form(None),
     resume_id: int | None = Form(None),
     notes: str | None = Form(None),
     current_user: User = Depends(get_current_user_web),
     db: Session = Depends(get_db)
 ):
+    from app.models.company import CompanyRating as _CR
     try:
         form_data = ApplicationCreate(
             company_id=company_id,
             company_name=company_name,
             company_website=company_website,
             company_email=company_email,
+            company_rating=_CR(company_rating),
             position=position,
             application_method=application_method,
             job_post_url=job_post_url,
@@ -390,6 +400,9 @@ def view_application_page(
     current_user: User = Depends(get_current_user_web),
     db: Session = Depends(get_db)
 ):
+    # Auto-ghost qualifying applications before showing this detail page
+    update_ghosted_applications(db)
+
     application = get_application_by_id(db, current_user.id, application_id)
     if not application:
         raise HTTPException(status_code=404, detail="Application not found")
@@ -437,6 +450,7 @@ def edit_application_post(
     company_id: int | None = Form(None), 
     company_website: str | None = Form(None),
     company_email: str | None = Form(None),
+    company_rating: str = Form("AVERAGE"),
     job_post_url: str | None = Form(None),
     resume_id: int | None = Form(None),
     notes: str | None = Form(None),
@@ -444,12 +458,14 @@ def edit_application_post(
     current_user: User = Depends(get_current_user_web),
     db: Session = Depends(get_db)
 ):
+    from app.models.company import CompanyRating as _CR
     try:
         form_data = ApplicationCreate(
             company_id=company_id,
             company_name=company_name,
             company_website=company_website,
             company_email=company_email,
+            company_rating=_CR(company_rating),
             position=position,
             application_method=application_method,
             job_post_url=job_post_url,

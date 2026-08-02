@@ -16,7 +16,8 @@ def create_job_application(db: Session, user_id: int, form_data: ApplicationCrea
         name=form_data.company_name,
         company_id=form_data.company_id,
         website=form_data.company_website,
-        email=form_data.company_email
+        email=form_data.company_email,
+        rating=form_data.company_rating,
     )
     
     # 2. Calculate next followup date (default = applied_date + 2 days)
@@ -166,7 +167,8 @@ def update_job_application(
         name=form_data.company_name,
         company_id=form_data.company_id,
         website=form_data.company_website,
-        email=form_data.company_email
+        email=form_data.company_email,
+        rating=form_data.company_rating,
     )
     
     application.company_id = company.id

@@ -41,6 +41,14 @@
                             <label for="company_email" class="form-label text-muted fw-semibold">Contact Email</label>
                             <input type="text" class="form-control bg-light border-0" id="company_email" name="company_email" placeholder="hr@acme.com" value="{{ application.company.email if application else '' }}">
                         </div>
+                        <div class="col-md-6">
+                            <label for="company_rating" class="form-label text-muted fw-semibold">Company Rating</label>
+                            <select class="form-select bg-light border-0" id="company_rating" name="company_rating">
+                                <option value="GOOD"         {% if application and application.company.rating.value == 'GOOD'         %}selected{% endif %}>Good</option>
+                                <option value="AVERAGE"      {% if not application or application.company.rating.value == 'AVERAGE'   %}selected{% endif %}>Average</option>
+                                <option value="BELOW_AVERAGE"{% if application and application.company.rating.value == 'BELOW_AVERAGE'%}selected{% endif %}>Below Average</option>
+                            </select>
+                        </div>
                     </div>
 
                     <h5 class="text-primary fw-bold mb-3">Application Details</h5>
@@ -171,6 +179,12 @@ document.addEventListener("DOMContentLoaded", function() {
                             a.addEventListener('click', function() {
                                 companyInput.value = company.name; 
                                 companyIdInput.value = company.id; 
+                                // Pre-fill website, email, rating from existing company data
+                                document.getElementById('company_website').value = company.website || '';
+                                document.getElementById('company_email').value = company.email || '';
+                                if (company.rating) {
+                                    document.getElementById('company_rating').value = company.rating;
+                                }
                                 suggestionsBox.style.display = 'none'; 
                             });
                             

@@ -1,6 +1,8 @@
 from datetime import date
 from pydantic import BaseModel
 from app.models.application import ApplicationStatus
+from app.models.company import CompanyRating
+
 
 class ApplicationCreate(BaseModel):
     # Company Fields
@@ -8,7 +10,8 @@ class ApplicationCreate(BaseModel):
     company_name: str
     company_website: str | None = None
     company_email: str | None = None
-    
+    company_rating: CompanyRating = CompanyRating.AVERAGE
+
     # Application Fields
     position: str
     application_method: str
@@ -16,10 +19,12 @@ class ApplicationCreate(BaseModel):
     applied_date: date
     next_followup_date: date | None = None
     status: ApplicationStatus | None = None
-    resume_id: int | None = None   # replaces resume_version string field
+    resume_id: int | None = None
     notes: str | None = None
 
+
 from app.models.followup import FollowupType, FollowupResponse
+
 
 class FollowupCreate(BaseModel):
     followup_date: date

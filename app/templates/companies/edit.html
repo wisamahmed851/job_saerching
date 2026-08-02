@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Edit {{ company.name }} - Job Tracker{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card shadow-lg border-0 rounded-4 mb-5">
+            <div class="card-header bg-dark text-white rounded-top-4 py-3">
+                <h4 class="mb-0 fw-semibold">Edit Company</h4>
+            </div>
+            <div class="card-body p-4 p-md-5">
+
+                {% if error %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    {{ error }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endif %}
+
+                <form action="/companies/{{ company.id }}/edit" method="POST">
+                    <div class="mb-3">
+                        <label for="name" class="form-label fw-semibold">Company Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control bg-light border-0" id="name" name="name"
+                               required value="{{ company.name }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="website" class="form-label fw-semibold text-muted">Website</label>
+                        <input type="text" class="form-control bg-light border-0" id="website" name="website"
+                               placeholder="https://..." value="{{ company.website or '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label fw-semibold text-muted">Contact Email</label>
+                        <input type="text" class="form-control bg-light border-0" id="email" name="email"
+                               placeholder="hr@acme.com" value="{{ company.email or '' }}">
+                    </div>
+                    <div class="mb-4">
+                        <label for="rating" class="form-label fw-semibold">Rating</label>
+                        <select class="form-select bg-light border-0" id="rating" name="rating">
+                            <option value="GOOD"         {% if company.rating.value == 'GOOD'         %}selected{% endif %}>Good</option>
+                            <option value="AVERAGE"      {% if company.rating.value == 'AVERAGE'      %}selected{% endif %}>Average</option>
+                            <option value="BELOW_AVERAGE"{% if company.rating.value == 'BELOW_AVERAGE'%}selected{% endif %}>Below Average</option>
+                        </select>
+                    </div>
+
+                    <hr class="my-4">
+                    <div class="d-flex justify-content-end gap-3">
+                        <a href="/companies/{{ company.id }}" class="btn btn-outline-secondary btn-lg">Cancel</a>
+                        <button type="submit" class="btn btn-primary btn-lg px-5">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

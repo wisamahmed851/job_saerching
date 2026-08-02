@@ -122,6 +122,16 @@
                     <span class="text-muted">Not provided</span>
                     {% endif %}
                 </div>
+                <div class="mb-4">
+                    <small class="text-muted d-block fw-semibold mb-1">Company Rating</small>
+                    {% if application.company.rating.value == 'GOOD' %}
+                    <span class="badge bg-success">Good</span>
+                    {% elif application.company.rating.value == 'AVERAGE' %}
+                    <span class="badge bg-warning text-dark">Average</span>
+                    {% else %}
+                    <span class="badge bg-danger">Below Average</span>
+                    {% endif %}
+                </div>
             </div>
             <div class="card-footer bg-white border-top-0 rounded-bottom-4 pt-0 pb-4 text-center">
                 <form action="/applications/{{ application.id }}/delete" method="POST"
